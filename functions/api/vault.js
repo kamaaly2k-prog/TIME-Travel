@@ -2,7 +2,11 @@
 //
 //   GET    /api/vault  -> { rev, data, updatedAt, updatedBy }  (404 { rev: 0 } when empty)
 //   PUT    /api/vault  <- { baseRev, data }  -> { rev }        (409 + current vault if baseRev is stale)
-//   DELETE /api/vault  -> { rev: 0 }                           (erases the shared vault)
+//   DELETE /api/vault  -> { rev: 0 }                           (erases the shared vault; kept 30 days for undo)
+//   POST   /api/vault  <- { action: 'restore', force? }       -> { rev }  (brings back the last erased vault)
+//
+// Every response except restore/PUT carries `erased: { at, by, until }` while an erased copy
+// is being kept, so the lock screen can offer to restore it.
 //
 // `data` is the vault exactly as the browser stores it: already encrypted with
 // AES-256-GCM under a key derived from the master password. This function never
@@ -16,6 +20,8 @@
 // Cf-Access-Authenticated-User-Email header to every request it lets through.
 
 const KEY = 'family-vault';
+const ERASED_KEY = 'family-vault.erased';
+const UNDO_SECONDS = 30 * 24 * 60 * 60;
 const MAX_BYTES = 2 * 1024 * 1024;
 
 function json(body, status = 200) {
@@ -51,10 +57,12 @@ export async function onRequest({ request, env }) {
 
   const current = await env.VAULT_KV.get(KEY, 'json');
   const currentRev = current ? current.rev : 0;
+  const erased = await env.VAULT_KV.get(ERASED_KEY, 'json');
+  const erasedInfo = erased ? { at: erased.erasedAt, by: erased.erasedBy, until: erased.keepUntil } : null;
 
   switch (request.method) {
     case 'GET':
-      return current ? json(current) : json({ rev: 0 }, 404);
+      return current ? json({ ...current, erased: erasedInfo }) : json({ rev: 0, erased: erasedInfo }, 404);
 
     case 'PUT': {
       const text = await request.text();
@@ -71,9 +79,53 @@ export async function onRequest({ request, env }) {
       return json({ rev: next.rev, updatedAt: next.updatedAt });
     }
 
-    case 'DELETE':
+    case 'DELETE': {
+      // Keep the erased (still encrypted) vault for 30 days so an accidental erase can be undone.
+      // Only the most recent erase is kept.
+      if (current) {
+        const now = Date.now();
+        const keep = {
+          vault: current,
+          erasedAt: new Date(now).toISOString(),
+          erasedBy: email,
+          keepUntil: new Date(now + UNDO_SECONDS * 1000).toISOString(),
+        };
+        await env.VAULT_KV.put(ERASED_KEY, JSON.stringify(keep), { expirationTtl: UNDO_SECONDS });
+      }
       await env.VAULT_KV.delete(KEY);
-      return json({ rev: 0 });
+      const kept = current ? await env.VAULT_KV.get(ERASED_KEY, 'json') : erased;
+      return json({ rev: 0, erased: kept ? { at: kept.erasedAt, by: kept.erasedBy, until: kept.keepUntil } : null });
+    }
+
+    case 'POST': {
+      let body;
+      try { body = await request.json(); } catch { return json({ error: 'Invalid JSON' }, 400); }
+      if (!body || body.action !== 'restore') return json({ error: 'Unknown action' }, 400);
+      if (!erased) return json({ error: 'Nothing to restore' }, 404);
+      // A new vault was created after the erase: only replace it when explicitly asked,
+      // and even then keep it in the undo slot.
+      if (current && body.force !== true) return json({ error: 'A vault exists', exists: true }, 409);
+      const next = {
+        rev: Math.max(currentRev, erased.vault.rev || 0) + 1,
+        data: erased.vault.data,
+        updatedAt: new Date().toISOString(),
+        updatedBy: email,
+      };
+      await env.VAULT_KV.put(KEY, JSON.stringify(next));
+      if (current) {
+        // Swap rather than lose: the vault being replaced goes into the 30-day undo slot.
+        const now = Date.now();
+        await env.VAULT_KV.put(ERASED_KEY, JSON.stringify({
+          vault: current,
+          erasedAt: new Date(now).toISOString(),
+          erasedBy: email,
+          keepUntil: new Date(now + UNDO_SECONDS * 1000).toISOString(),
+        }), { expirationTtl: UNDO_SECONDS });
+      } else {
+        await env.VAULT_KV.delete(ERASED_KEY);
+      }
+      return json({ rev: next.rev, updatedAt: next.updatedAt });
+    }
 
     default:
       return json({ error: 'Method not allowed' }, 405);

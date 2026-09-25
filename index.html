@@ -984,6 +984,12 @@
         <button class="btn-primary" type="submit" id="vaultAuthSubmit">Unlock</button>
         <span class="vault-sync" id="vaultAuthSync"></span>
       </form>
+      <div id="vaultErasedNotice" class="vault-note vault-hidden">
+        <span id="vaultErasedText"></span>
+        <div class="vault-actions">
+          <button class="btn-ghost" id="vaultRestoreErased" type="button">↩ Restore erased vault</button>
+        </div>
+      </div>
       <div id="vaultOldNotice" class="vault-note vault-hidden">
         This browser had its own separate vault from before the family vault existed. It has been set aside, not deleted.
         To add its passwords to the family vault: download it, unlock the family vault, click <b>Import</b> and enter that old vault's master password.
@@ -1009,6 +1015,7 @@
         <input id="vaultSearch" type="search" class="search-input" placeholder="Search site, username, notes…" autocomplete="off">
         <button class="btn-primary" id="vaultAddBtn" type="button">+ Add</button>
         <button class="btn-ghost" id="vaultExportBtn" type="button">Export</button>
+        <button class="btn-ghost" id="vaultChangePwBtn" type="button">🔑 Change password</button>
         <button class="btn-ghost" id="vaultImportBtn" type="button">Import</button>
         <button class="btn-ghost" id="vaultToggleAll" type="button">Expand all</button>
         <button class="btn-ghost vault-lockbtn" id="vaultLockBtn" type="button" title="Hide the entries and go back to the master password screen">🔒 Lock now</button>
@@ -3056,6 +3063,30 @@
 </script>
 
 <!-- Password vault: add / edit dialog -->
+<dialog id="vaultPwDlg" class="vault-dialog">
+  <form id="vaultPwForm" method="dialog" autocomplete="off">
+    <h3>Change the family master password</h3>
+    <p class="attr-desc" style="margin:0 0 14px;">Everyone who uses the family vault will need the new password on their next unlock. Your passwords stay exactly as they are — they are just re-encrypted with the new key.</p>
+    <div class="control">
+      <label for="vaultPwCurrent">Current master password</label>
+      <input id="vaultPwCurrent" type="password" class="search-input vault-mono" autocomplete="current-password" required>
+    </div>
+    <div class="control">
+      <label for="vaultPwNew">New master password (12+ characters)</label>
+      <input id="vaultPwNew" type="password" class="search-input vault-mono" autocomplete="new-password" required>
+      <div class="vault-strength"><i id="vaultPwStrength"></i></div>
+    </div>
+    <div class="control">
+      <label for="vaultPwNew2">Confirm new master password</label>
+      <input id="vaultPwNew2" type="password" class="search-input vault-mono" autocomplete="new-password" required>
+    </div>
+    <div class="vault-err" id="vaultPwErr"></div>
+    <div class="vault-dialog-actions">
+      <button type="button" class="btn-ghost" id="vaultPwCancel">Cancel</button>
+      <button type="submit" class="btn-primary" id="vaultPwSave">Change password</button>
+    </div>
+  </form>
+</dialog>
 <dialog id="vaultEditDlg" class="vault-dialog">
   <form id="vaultEditForm" method="dialog" autocomplete="off">
     <h3 id="vaultEditTitle">Add entry</h3>
@@ -3236,12 +3267,13 @@
     return { status: r.status, body: data };
   }
 
+  let erasedInfo = null; // { at, by, until } while the server keeps an erased copy
   async function fetchServer() {
     const res = await api('GET');
     if (!res) return null;
-    if (res.status === 404) return { rev: 0, data: null };
-    if (res.status !== 200) { markOffline(true); return null; }
-    return res.body;
+    if (res.status !== 200 && res.status !== 404) { markOffline(true); return null; }
+    erasedInfo = res.body.erased || null;
+    return res.status === 404 ? { rev: 0, data: null } : res.body;
   }
 
   // Before unlocking: make the local copy match the family vault on the server.
@@ -3307,7 +3339,7 @@
       setAside(readStore());
       writeStore(srv.data); setSynced(srv.rev);
       lock();
-      toast('The family vault was replaced on another device — unlock it with its master password');
+      toast('The family vault was replaced, restored or given a new master password on another device — unlock with the current master password');
       return false;
     }
     entries = mergeEntries(entries, remote);
@@ -3369,6 +3401,13 @@
     $('vaultMaster').autocomplete = exists ? 'current-password' : 'new-password';
     $('vaultReset').classList.toggle('vault-hidden', !exists);
     $('vaultOldNotice').classList.toggle('vault-hidden', !lsGet(OLD_KEY));
+    $('vaultErasedNotice').classList.toggle('vault-hidden', !erasedInfo);
+    if (erasedInfo) {
+      const d = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      $('vaultErasedText').textContent = `A family vault was erased on ${d(erasedInfo.at)}${erasedInfo.by ? ' by ' + erasedInfo.by : ''}. ` +
+        `It can be restored until ${d(erasedInfo.until)} — you will need the master password it had.` +
+        (exists ? ' Restoring will swap it with the current vault, which is then kept for 30 days instead.' : '');
+    }
   }
 
   function showAuth() {
@@ -3427,9 +3466,13 @@
 
   $('vaultReset').addEventListener('click', async () => {
     const shared = syncMode === 'online';
-    if (!confirm(shared
-      ? 'Permanently erase the FAMILY vault for everyone, on every device? Export a backup first if you need it.'
-      : 'Permanently erase the vault stored in this browser? Export a backup first if you need it.')) return;
+    const typed = prompt(shared
+      ? 'Erase the FAMILY vault for everyone, on every device?\n\n' +
+        'It will be kept on the server for 30 days, so it can be restored from this screen (with its master password). After that it is gone for good.\n\n' +
+        'Type ERASE to confirm.'
+      : 'Permanently erase the vault stored in this browser? This cannot be undone — export a backup first if you need it.\n\nType ERASE to confirm.');
+    if (typed == null) return;
+    if (typed.trim() !== 'ERASE') { toast('Not erased — you need to type ERASE exactly'); return; }
     if (shared) {
       const res = await api('DELETE');
       if (!res || res.status !== 200) { toast('Could not reach the server — nothing was erased'); return; }
@@ -3438,6 +3481,24 @@
     }
     [STORE_KEY, REV_KEY, DIRTY_KEY].forEach(lsDel);
     showAuth();
+    if (shared) toast('Vault erased — it can be restored for 30 days from this screen');
+  });
+
+  $('vaultRestoreErased').addEventListener('click', async () => {
+    const replacing = !!readStore();
+    if (!confirm(replacing
+      ? 'Restore the erased family vault? The current vault will be swapped out and kept for 30 days, so nothing is lost.'
+      : 'Restore the erased family vault? You will unlock it with the master password it had.')) return;
+    let res = await api('POST', { action: 'restore', force: replacing });
+    if (res && res.status === 409 && res.body.exists &&
+        confirm('A new family vault was created since the erase. Swap it out (it is kept for 30 days) and restore the erased one?')) {
+      res = await api('POST', { action: 'restore', force: true });
+    }
+    if (!res || res.status !== 200) { toast('Could not restore — ' + ((res && res.body.error) || 'server unreachable')); return; }
+    if (readStore()) setAside(readStore());
+    [STORE_KEY, REV_KEY, DIRTY_KEY].forEach(lsDel);
+    showAuth();
+    toast('Erased vault restored — unlock it with its master password');
   });
 
   $('vaultOldDownload').addEventListener('click', () => {
@@ -3455,6 +3516,7 @@
     $('vaultList').replaceChildren();
     $('vaultSearch').value = '';
     if ($('vaultEditDlg').open) $('vaultEditDlg').close();
+    if ($('vaultPwDlg').open) $('vaultPwDlg').close();
     clearTimeout(lockTimer);
     showAuth();
   }
@@ -3691,6 +3753,69 @@
     $('vaultFPass').type = 'text';
     $('vaultTogglePass').textContent = 'Hide';
     paintStrength($('vaultPassStrength'), $('vaultFPass').value);
+  });
+
+  // ---------- change master password ----------
+  $('vaultChangePwBtn').addEventListener('click', () => {
+    ['vaultPwCurrent', 'vaultPwNew', 'vaultPwNew2'].forEach(id => { $(id).value = ''; });
+    $('vaultPwErr').textContent = '';
+    paintStrength($('vaultPwStrength'), '');
+    $('vaultPwDlg').showModal();
+    $('vaultPwCurrent').focus();
+  });
+  $('vaultPwCancel').addEventListener('click', () => $('vaultPwDlg').close());
+  $('vaultPwNew').addEventListener('input', e => paintStrength($('vaultPwStrength'), e.target.value));
+
+  $('vaultPwForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const cur = $('vaultPwCurrent').value, next = $('vaultPwNew').value;
+    const btn = $('vaultPwSave');
+    $('vaultPwErr').textContent = '';
+    btn.disabled = true;
+    try {
+      if (next.length < 12) throw new Error('Use at least 12 characters for the new password.');
+      if (next !== $('vaultPwNew2').value) throw new Error('The new passwords do not match.');
+      if (next === cur) throw new Error('The new password is the same as the current one.');
+      if (syncMode === 'offline') throw new Error('You are offline — reconnect to change the family master password.');
+      // Prove the current password: it must decrypt the stored vault.
+      const oldKey = await deriveKey(cur, salt);
+      try { await decryptJSON(oldKey, readStore()); } catch { throw new Error('The current master password is wrong.'); }
+
+      // Start from the latest family vault so no one's recent edits are lost.
+      let baseRev = localRev();
+      if (syncMode === 'online') {
+        const srv = await fetchServer();
+        if (!srv) throw new Error('Could not reach the family vault — nothing was changed.');
+        if (srv.data) {
+          if (srv.data.salt !== b64(salt)) throw new Error('The vault was just changed on another device — lock, unlock and try again.');
+          entries = mergeEntries(entries, await decryptJSON(oldKey, srv.data));
+        }
+        baseRev = srv.rev;
+      }
+      // Re-encrypt everything under a key from the new password (new salt), and only switch over once saved.
+      const newSalt = crypto.getRandomValues(new Uint8Array(16));
+      const newKey = await deriveKey(next, newSalt);
+      const box = await encryptJSON(newKey, entries);
+      const blob = { v: 1, kdf: 'PBKDF2-SHA256', iter: ITERATIONS, salt: b64(newSalt), ...box };
+      if (syncMode === 'online') {
+        const res = await api('PUT', { baseRev, data: blob });
+        if (!res || res.status !== 200) throw new Error(res && res.status === 409
+          ? 'The vault was just changed on another device — nothing was changed, please try again.'
+          : 'Could not save — nothing was changed.');
+        writeStore(blob); setSynced(res.body.rev);
+      } else {
+        writeStore(blob); lsSet(DIRTY_KEY, '1');
+      }
+      key = newKey; salt = newSalt;
+      render();
+      $('vaultPwDlg').close();
+      toast('Master password changed — share the new one with family');
+    } catch (err) {
+      $('vaultPwErr').textContent = err.message;
+    } finally {
+      btn.disabled = false;
+      $('vaultPwCurrent').value = '';
+    }
   });
 
   // ---------- export / import (encrypted backup) ----------
