@@ -619,6 +619,10 @@
   .vault-toolbar .search-input{flex:1;min-width:180px;}
   .vault-toolbar .btn-primary{padding:9px 18px;}
   .vault-help{font-size:.8rem;color:var(--muted);margin:0 0 18px;line-height:1.5;}
+  .vault-sync{font-family:var(--mono);font-size:.72rem;letter-spacing:.03em;color:var(--muted);margin-left:10px;}
+  .vault-help .vault-sync{margin:0 8px 0 0;}
+  .vault-sync.ok{color:var(--green);}
+  .vault-sync.warn{color:var(--amber);}
   .vault-entry{padding:18px 20px;margin-bottom:12px;}
   .vault-entry-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;}
   .vault-entry-title{font-family:var(--mono);font-weight:700;font-size:.95rem;color:var(--text);overflow-wrap:anywhere;}
@@ -855,10 +859,10 @@
     <div class="board-header">
       <div class="title-block">
         <div class="title-meta-row">
-          <span class="eyebrow">Encrypted in this browser, never uploaded</span>
+          <span class="eyebrow">Shared family vault, encrypted before it syncs</span>
         </div>
         <h1>PASSWORD <span>VAULT</span></h1>
-        <p>Store your passwords under one master password. Click Copy to put a username or password on the clipboard, then paste it into any login form. The clipboard clears itself after 30 seconds.</p>
+        <p>One vault for the family, synced across your devices and unlocked with one shared master password. Click Copy to put a username or password on the clipboard, then paste it into any login form. The clipboard clears itself after 30 seconds.</p>
       </div>
     </div>
 
@@ -878,15 +882,24 @@
         </div>
         <div class="vault-err" id="vaultAuthErr"></div>
         <button class="btn-primary" type="submit" id="vaultAuthSubmit">Unlock</button>
+        <span class="vault-sync" id="vaultAuthSync"></span>
       </form>
+      <div id="vaultOldNotice" class="vault-note vault-hidden">
+        This browser had its own separate vault from before the family vault existed. It has been set aside, not deleted.
+        To add its passwords to the family vault: download it, unlock the family vault, click <b>Import</b> and enter that old vault's master password.
+        <div class="vault-actions">
+          <button class="btn-ghost" id="vaultOldDownload" type="button">Download old vault</button>
+          <button class="btn-ghost vault-danger" id="vaultOldDiscard" type="button">Discard it</button>
+        </div>
+      </div>
       <div class="vault-actions">
         <button class="btn-ghost" id="vaultImportFromAuth" type="button">Restore from backup…</button>
         <button class="btn-ghost vault-danger vault-hidden" id="vaultReset" type="button">Erase vault</button>
       </div>
       <div class="vault-note">
-        Everything is encrypted with AES-256-GCM using a key derived from your master password
-        (PBKDF2-SHA256, 600,000 iterations). Nothing is sent to any server. If you forget the master
-        password, the data cannot be recovered.
+        Everything is encrypted in your browser with AES-256-GCM using a key derived from the master password
+        (PBKDF2-SHA256, 600,000 iterations) before it is synced. Cloudflare only ever stores scrambled data and
+        never sees the master password. If the master password is forgotten, the data cannot be recovered.
       </div>
     </div>
 
@@ -899,7 +912,7 @@
         <button class="btn-ghost" id="vaultImportBtn" type="button">Import</button>
         <button class="btn-ghost" id="vaultLockBtn" type="button">🔒 Lock</button>
       </div>
-      <p class="vault-help">Tip: you can also drag a username or password straight into a login field. The vault locks itself after 5 minutes of inactivity.</p>
+      <p class="vault-help"><span class="vault-sync" id="vaultSyncStatus"></span> Tip: you can also drag a username or password straight into a login field. The vault locks itself after 5 minutes of inactivity.</p>
       <div id="vaultList"></div>
     </div>
 
@@ -2650,14 +2663,22 @@
 
 <script>
 // ---------- Password vault tab ----------
-// All data is encrypted client-side (PBKDF2-SHA256 -> AES-256-GCM) and kept in localStorage.
+// A shared family vault. Everything is encrypted client-side (PBKDF2-SHA256 -> AES-256-GCM)
+// before it leaves the browser. The encrypted vault is cached in localStorage and synced
+// through the /api/vault Pages Function (functions/api/vault.js) when the site runs on
+// Cloudflare. Without that endpoint (e.g. a plain static host) it works local-only.
 (() => {
   'use strict';
 
-  const STORE_KEY = 'pwvault.v1';
+  const STORE_KEY = 'pwvault.v1';           // encrypted vault (same format as the server's `data`)
+  const REV_KEY = STORE_KEY + '.rev';       // server revision the local copy is based on
+  const DIRTY_KEY = STORE_KEY + '.dirty';   // '1' when local changes have not reached the server
+  const OLD_KEY = STORE_KEY + '.old';       // a different, browser-only vault set aside on first sync
+  const API = 'api/vault';
   const ITERATIONS = 600000;
   const CLIPBOARD_CLEAR_MS = 30000;
   const AUTO_LOCK_MS = 5 * 60 * 1000;
+  const PULL_EVERY_MS = 60 * 1000;
 
   const $ = id => document.getElementById(id);
   const enc = new TextEncoder();
@@ -2665,29 +2686,45 @@
 
   let key = null;       // CryptoKey while unlocked
   let salt = null;      // Uint8Array
-  let entries = [];     // decrypted entries while unlocked
+  let entries = [];     // decrypted entries while unlocked (deleted ones kept as tombstones)
   let editingId = null;
   let lockTimer = null;
   let clipTimer = null;
+  let syncMode = 'unknown';   // 'online' | 'offline' (network error) | 'local' (no sync service)
+  let pushing = null;
 
   // ---------- helpers ----------
   const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
   const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const live = () => entries.filter(x => !x.deleted);
 
   function toast(msg) {
     const t = $('vaultToast');
     t.textContent = msg;
     t.classList.add('show');
     clearTimeout(toast._t);
-    toast._t = setTimeout(() => t.classList.remove('show'), 2200);
+    toast._t = setTimeout(() => t.classList.remove('show'), 2600);
   }
 
+  function lsGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch {} }
+
   function readStore() {
-    try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch { return null; }
+    try { return JSON.parse(lsGet(STORE_KEY)); } catch { return null; }
   }
   function writeStore(obj) {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(obj)); return true; }
-    catch { toast('Could not save — browser storage unavailable'); return false; }
+    if (lsSet(STORE_KEY, JSON.stringify(obj))) return true;
+    toast('Could not save — browser storage unavailable');
+    return false;
+  }
+  const localRev = () => parseInt(lsGet(REV_KEY) || '0', 10) || 0;
+  const isDirty = () => lsGet(DIRTY_KEY) === '1';
+  function setSynced(rev) { lsSet(REV_KEY, String(rev)); lsDel(DIRTY_KEY); }
+
+  // Keep a browser-only vault that is about to be replaced by the family vault.
+  function setAside(local) {
+    if (local && !lsGet(OLD_KEY)) lsSet(OLD_KEY, JSON.stringify(local));
   }
 
   // ---------- crypto ----------
@@ -2706,9 +2743,157 @@
     const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(box.iv) }, k, unb64(box.ct));
     return JSON.parse(dec.decode(pt));
   }
-  async function persist() {
+  async function encryptVault() {
     const box = await encryptJSON(key, entries);
-    return writeStore({ v: 1, kdf: 'PBKDF2-SHA256', iter: ITERATIONS, salt: b64(salt), ...box });
+    return { v: 1, kdf: 'PBKDF2-SHA256', iter: ITERATIONS, salt: b64(salt), ...box };
+  }
+
+  // Newest version of each entry wins; deletions are tombstones so they sync too.
+  function mergeEntries(a, b) {
+    const byId = new Map();
+    for (const x of [...a, ...b]) {
+      if (!x || !x.id) continue;
+      const cur = byId.get(x.id);
+      if (!cur || (x.updated || 0) > (cur.updated || 0)) byId.set(x.id, x);
+    }
+    return [...byId.values()];
+  }
+
+  // ---------- sync ----------
+  function showSync(state, text) {
+    for (const id of ['vaultSyncStatus', 'vaultAuthSync']) {
+      const n = $(id);
+      n.textContent = text;
+      n.className = 'vault-sync' + (state === 'ok' ? ' ok' : state === 'warn' ? ' warn' : '');
+    }
+  }
+  function markOffline(networkError) {
+    syncMode = networkError ? 'offline' : 'local';
+    if (networkError) showSync('warn', '⚠ Can’t reach the family vault (offline, or sign-in expired — reload) — changes stay on this device and sync later');
+    else showSync('', 'This device only — sync is not available on this site');
+  }
+
+  // Returns { status, body } for a JSON reply from the sync function, or null when it is unreachable.
+  async function api(method, body) {
+    let r;
+    try {
+      r = await fetch(API, {
+        method, cache: 'no-store', credentials: 'same-origin',
+        headers: body ? { 'content-type': 'application/json' } : {},
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch { markOffline(true); return null; }
+    // Anything that is not our JSON (a static host's 404 page, a sign-in page) means no sync service.
+    if (!(r.headers.get('content-type') || '').includes('application/json')) { markOffline(false); return null; }
+    let data = {};
+    try { data = await r.json(); } catch {}
+    if (r.status === 403 || r.status === 503) { markOffline(false); return null; }
+    syncMode = 'online';
+    return { status: r.status, body: data };
+  }
+
+  async function fetchServer() {
+    const res = await api('GET');
+    if (!res) return null;
+    if (res.status === 404) return { rev: 0, data: null };
+    if (res.status !== 200) { markOffline(true); return null; }
+    return res.body;
+  }
+
+  // Before unlocking: make the local copy match the family vault on the server.
+  async function refreshWhileLocked() {
+    showSync('', '⟳ Checking for the family vault…');
+    const srv = await fetchServer();
+    if (!srv) return;
+    const local = readStore();
+    if (!srv.data) {
+      if (local && localRev() > 0 && !isDirty()) {
+        // It was synced before and has since been erased on another device.
+        setAside(local);
+        lsDel(STORE_KEY); lsDel(REV_KEY);
+        toast('The family vault was erased on another device');
+      } else if (local) {
+        lsSet(DIRTY_KEY, '1'); // first sync: upload this browser's vault after unlock
+      }
+      showSync('ok', local ? '☁ Will become the family vault when unlocked' : '☁ Connected');
+    } else if (!local || local.salt !== srv.data.salt) {
+      if (local) setAside(local); // a different vault — keep it, but use the family one
+      writeStore(srv.data); setSynced(srv.rev);
+      showSync('ok', '☁ Family vault ready');
+    } else {
+      if (!isDirty() && srv.rev !== localRev()) { writeStore(srv.data); setSynced(srv.rev); }
+      showSync('ok', '☁ Family vault ready');
+    }
+    renderAuthMode();
+  }
+
+  // Upload local changes; on a conflict, merge with the server copy and retry.
+  function push() {
+    if (!pushing) pushing = doPush().finally(() => { pushing = null; });
+    return pushing;
+  }
+  async function doPush() {
+    if (syncMode === 'local') return;
+    for (let attempt = 0; attempt < 4 && key; attempt++) {
+      const local = readStore();
+      if (!local || !isDirty()) return;
+      showSync('', '⟳ Syncing…');
+      const res = await api('PUT', { baseRev: localRev(), data: local });
+      if (!res) return;
+      if (res.status === 200) {
+        setSynced(res.body.rev);
+        showSync('ok', '☁ Synced');
+        return;
+      }
+      if (res.status !== 409) { markOffline(true); return; }
+      const srv = res.body;
+      if (!srv.data) { lsSet(REV_KEY, '0'); continue; } // erased elsewhere: re-create from this device
+      if (!(await absorb(srv))) return;
+      lsSet(DIRTY_KEY, '1');
+    }
+  }
+
+  // Merge a newer server copy into the open vault. Returns false if the vault was replaced.
+  async function absorb(srv) {
+    let remote;
+    try {
+      if (srv.data.salt !== b64(salt)) throw 0;
+      remote = await decryptJSON(key, srv.data);
+    } catch {
+      setAside(readStore());
+      writeStore(srv.data); setSynced(srv.rev);
+      lock();
+      toast('The family vault was replaced on another device — unlock it with its master password');
+      return false;
+    }
+    entries = mergeEntries(entries, remote);
+    writeStore(await encryptVault());
+    lsSet(REV_KEY, String(srv.rev));
+    render();
+    return true;
+  }
+
+  // While unlocked: pick up changes made on other devices.
+  async function pull() {
+    if (!key || syncMode === 'local' || pushing) return;
+    if (isDirty()) return push();
+    const srv = await fetchServer();
+    if (!srv || !key) return;
+    if (!srv.data) { lsSet(DIRTY_KEY, '1'); lsSet(REV_KEY, '0'); return push(); }
+    if (srv.rev === localRev()) { showSync('ok', '☁ Synced'); return; }
+    if (await absorb(srv)) {
+      setSynced(srv.rev);
+      showSync('ok', '☁ Synced');
+    }
+  }
+  setInterval(() => { if (document.visibilityState === 'visible') pull(); }, PULL_EVERY_MS);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pull(); });
+
+  async function persist() {
+    const ok = writeStore(await encryptVault());
+    lsSet(DIRTY_KEY, '1');
+    if (syncMode !== 'local') push();
+    return ok;
   }
 
   // ---------- strength ----------
@@ -2728,23 +2913,29 @@
   }
 
   // ---------- auth ----------
-  function showAuth() {
+  function renderAuthMode() {
     const exists = !!readStore();
-    $('vaultAuthTitle').textContent = exists ? 'Unlock vault' : 'Create your vault';
+    $('vaultAuthTitle').textContent = exists ? 'Unlock family vault' : 'Create the family vault';
     $('vaultAuthHint').textContent = exists
-      ? 'Enter your master password to unlock.'
-      : 'Choose a strong master password (12+ characters). It is the only key to your data.';
+      ? 'Enter the family master password to unlock.'
+      : 'Nobody has set up the family vault yet. Choose a strong master password (12+ characters) and share it only with family — it is the one key to the vault.';
     $('vaultAuthSubmit').textContent = exists ? 'Unlock' : 'Create vault';
     $('vaultConfirmWrap').classList.toggle('vault-hidden', exists);
     $('vaultMaster2').required = !exists;
     $('vaultMaster').autocomplete = exists ? 'current-password' : 'new-password';
     $('vaultReset').classList.toggle('vault-hidden', !exists);
+    $('vaultOldNotice').classList.toggle('vault-hidden', !lsGet(OLD_KEY));
+  }
+
+  function showAuth() {
     $('vaultAuthErr').textContent = '';
     $('vaultAuthView').classList.remove('vault-hidden');
     $('vaultMainView').classList.add('vault-hidden');
     $('vaultMaster').value = '';
     $('vaultMaster2').value = '';
     paintStrength($('vaultMasterStrength'), '');
+    renderAuthMode();
+    refreshWhileLocked();
   }
 
   $('vaultMaster').addEventListener('input', e => paintStrength($('vaultMasterStrength'), e.target.value));
@@ -2752,19 +2943,24 @@
   $('vaultAuthForm').addEventListener('submit', async e => {
     e.preventDefault();
     const pw = $('vaultMaster').value;
-    const store = readStore();
     const btn = $('vaultAuthSubmit');
     $('vaultAuthErr').textContent = '';
     btn.disabled = true;
     const label = btn.textContent;
     btn.textContent = 'Working…';
     try {
+      let store = readStore();
       if (!store) {
+        // Someone may have created the family vault since this page loaded.
+        await refreshWhileLocked();
+        store = readStore();
+        if (store) throw new Error('A family vault already exists — enter its master password.');
         if (pw.length < 12) throw new Error('Use at least 12 characters.');
         if (pw !== $('vaultMaster2').value) throw new Error('Passwords do not match.');
         salt = crypto.getRandomValues(new Uint8Array(16));
         key = await deriveKey(pw, salt);
         entries = [];
+        lsSet(REV_KEY, '0');
         await persist();
       } else {
         salt = unb64(store.salt);
@@ -2772,6 +2968,7 @@
         try { entries = await decryptJSON(k, store); }
         catch { throw new Error('Wrong master password.'); }
         key = k;
+        if (isDirty()) push(); else pull();
       }
       openVault();
     } catch (err) {
@@ -2784,10 +2981,28 @@
     }
   });
 
-  $('vaultReset').addEventListener('click', () => {
-    if (!confirm('Permanently erase the vault stored in this browser? Export a backup first if you need it.')) return;
-    try { localStorage.removeItem(STORE_KEY); } catch {}
+  $('vaultReset').addEventListener('click', async () => {
+    const shared = syncMode === 'online';
+    if (!confirm(shared
+      ? 'Permanently erase the FAMILY vault for everyone, on every device? Export a backup first if you need it.'
+      : 'Permanently erase the vault stored in this browser? Export a backup first if you need it.')) return;
+    if (shared) {
+      const res = await api('DELETE');
+      if (!res || res.status !== 200) { toast('Could not reach the server — nothing was erased'); return; }
+    } else if (syncMode === 'offline') {
+      toast('You are offline — reconnect to erase the family vault'); return;
+    }
+    [STORE_KEY, REV_KEY, DIRTY_KEY].forEach(lsDel);
     showAuth();
+  });
+
+  $('vaultOldDownload').addEventListener('click', () => {
+    downloadJSON(lsGet(OLD_KEY), 'old-browser-vault');
+  });
+  $('vaultOldDiscard').addEventListener('click', () => {
+    if (!confirm('Delete the old vault that was set aside in this browser? Download it first if it has passwords you need.')) return;
+    lsDel(OLD_KEY);
+    renderAuthMode();
   });
 
   function lock() {
@@ -2884,14 +3099,16 @@
   }
 
   function render() {
+    if (!key) return;
     const q = $('vaultSearch').value.trim().toLowerCase();
     const list = $('vaultList');
-    const shown = entries
+    const all = live();
+    const shown = all
       .filter(x => !q || [x.name, x.user, x.url, x.notes].some(f => (f || '').toLowerCase().includes(q)))
       .sort((a, b) => a.name.localeCompare(b.name));
     if (!shown.length) {
       list.replaceChildren(el('div', { class: 'travel-card vault-empty' },
-        entries.length ? 'No matches.' : 'Your vault is empty. Click “+ Add” to store your first password.'));
+        all.length ? 'No matches.' : 'The family vault is empty. Click “+ Add” to store the first password.'));
       return;
     }
     list.replaceChildren(...shown.map(x => {
@@ -2948,8 +3165,9 @@
       updated: Date.now(),
     };
     if (!data.name) return;
-    if (editingId) {
-      Object.assign(entries.find(x => x.id === editingId), data);
+    const existing = editingId && entries.find(x => x.id === editingId);
+    if (existing) {
+      Object.assign(existing, data);
     } else {
       entries.push({ id: crypto.randomUUID ? crypto.randomUUID() : b64(crypto.getRandomValues(new Uint8Array(12))), ...data });
     }
@@ -2959,9 +3177,9 @@
   });
 
   async function remove(id) {
-    const x = entries.find(e => e.id === id);
-    if (!x || !confirm(`Delete “${x.name}”?`)) return;
-    entries = entries.filter(e => e.id !== id);
+    const i = entries.findIndex(e => e.id === id);
+    if (i < 0 || !confirm(`Delete “${entries[i].name}”?`)) return;
+    entries[i] = { id, deleted: true, updated: Date.now() };
     await persist();
     render();
     toast('Deleted');
@@ -3000,13 +3218,17 @@
   });
 
   // ---------- export / import (encrypted backup) ----------
-  $('vaultExportBtn').addEventListener('click', () => {
-    const store = readStore();
-    if (!store) return;
-    const blob = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
-    const a = el('a', { href: URL.createObjectURL(blob), download: `vault-backup-${new Date().toISOString().slice(0, 10)}.json` });
+  function downloadJSON(text, name) {
+    if (!text) return;
+    const pretty = JSON.stringify(JSON.parse(text), null, 2);
+    const blob = new Blob([pretty], { type: 'application/json' });
+    const a = el('a', { href: URL.createObjectURL(blob), download: `${name}-${new Date().toISOString().slice(0, 10)}.json` });
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  $('vaultExportBtn').addEventListener('click', () => {
+    downloadJSON(lsGet(STORE_KEY), 'vault-backup');
     toast('Encrypted backup downloaded');
   });
 
@@ -3034,19 +3256,30 @@
     } catch { toast('Wrong password or corrupted backup'); return; }
 
     if (key) {
-      // Merge into the open vault (re-encrypted with the current master password).
-      const ids = new Set(entries.map(x => x.id));
-      let added = 0;
-      for (const x of imported) if (x && x.id && !ids.has(x.id)) { entries.push(x); added++; }
+      // Merge into the open vault (re-encrypted with the family master password).
+      const before = new Set(live().map(x => x.id));
+      entries = mergeEntries(entries, imported);
+      const added = live().filter(x => !before.has(x.id)).length;
       await persist();
       render();
       toast(`Imported ${added} new entr${added === 1 ? 'y' : 'ies'}`);
-    } else {
-      if (readStore() && !confirm('Replace the vault in this browser with this backup?')) return;
-      writeStore(backup);
-      showAuth();
-      toast('Backup restored — unlock with its master password');
+      return;
     }
+    // Locked: replace the whole family vault with this backup.
+    const shared = syncMode === 'online';
+    if (readStore() && !confirm(shared
+      ? 'Replace the FAMILY vault for everyone with this backup? Its master password becomes the family master password.'
+      : 'Replace the vault in this browser with this backup?')) return;
+    if (shared) {
+      const srv = await fetchServer();
+      const res = srv && await api('PUT', { baseRev: srv.rev, data: backup });
+      if (!res || res.status !== 200) { toast('Could not reach the server — nothing was changed'); return; }
+      writeStore(backup); setSynced(res.body.rev);
+    } else {
+      writeStore(backup); lsSet(DIRTY_KEY, '1'); lsSet(REV_KEY, '0');
+    }
+    showAuth();
+    toast('Backup restored — unlock with its master password');
   });
 
   // Lock on page hide so a page restored from the back/forward cache is not left open.
