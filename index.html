@@ -44,12 +44,40 @@
 
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
+  /* Per-page ambient colours (animatable so page switches cross-fade). */
+  @property --glow-a{syntax:'<color>';inherits:true;initial-value:rgba(255,166,48,.30);}
+  @property --glow-b{syntax:'<color>';inherits:true;initial-value:rgba(244,114,182,.20);}
+  @property --glow-c{syntax:'<color>';inherits:true;initial-value:rgba(251,113,133,.16);}
+  body{--glow-a:rgba(255,166,48,.30);--glow-b:rgba(244,114,182,.20);--glow-c:rgba(251,113,133,.16);
+    transition:--glow-a 1.2s ease,--glow-b 1.2s ease,--glow-c 1.2s ease;}
+  body[data-page="travel"]{--glow-a:rgba(45,212,191,.26);--glow-b:rgba(56,189,248,.22);--glow-c:rgba(99,102,241,.16);}
+  body[data-page="vault"]{--glow-a:rgba(167,139,250,.28);--glow-b:rgba(52,211,153,.18);--glow-c:rgba(59,130,246,.15);}
+  .ambient{position:fixed;inset:-15%;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(44% 38% at 16% 10%, var(--glow-a), transparent 70%),
+      radial-gradient(38% 34% at 88% 20%, var(--glow-b), transparent 70%),
+      radial-gradient(50% 44% at 58% 98%, var(--glow-c), transparent 72%),
+      radial-gradient(30% 26% at 40% 55%, var(--glow-b), transparent 75%);
+    animation:ambientDrift 38s ease-in-out infinite alternate;}
+  @keyframes ambientDrift{
+    0%{transform:translate3d(0,0,0) scale(1);}
+    50%{transform:translate3d(3%,-2%,0) scale(1.07);}
+    100%{transform:translate3d(-3%,2.5%,0) scale(1.03);}
+  }
+  /* Travel: faint flight-path arcs. Vault: faint diagonal "security" hatching. */
+  .ambient-layer{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;transition:opacity 1.2s ease;}
+  .ambient-arcs{
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900' preserveAspectRatio='xMidYMid slice'%3E%3Cg fill='none' stroke='%232dd4bf' stroke-width='1.6' stroke-dasharray='2 12' stroke-linecap='round'%3E%3Cpath d='M-50 700 Q 500 150 1120 420'/%3E%3Cpath d='M180 880 Q 820 260 1650 300'/%3E%3Cpath d='M-80 260 Q 600 -40 1300 120'/%3E%3C/g%3E%3Cg fill='%2338bdf8'%3E%3Ccircle cx='1120' cy='420' r='4'/%3E%3Ccircle cx='1300' cy='120' r='4'/%3E%3Ccircle cx='180' cy='880' r='4'/%3E%3C/g%3E%3C/svg%3E") center/cover no-repeat;
+    animation:arcsFloat 30s ease-in-out infinite alternate;}
+  @keyframes arcsFloat{from{transform:translateY(0);}to{transform:translateY(-18px);}}
+  .ambient-hatch{background:repeating-linear-gradient(135deg, rgba(167,139,250,.05) 0 1px, transparent 1px 22px);}
+  body[data-page="travel"] .ambient-arcs{opacity:.55;}
+  body[data-page="vault"] .ambient-hatch{opacity:1;}
+  @media (prefers-reduced-motion: reduce){ .ambient,.ambient-arcs{animation:none;} body{transition:none;} }
   body{
     overflow-x:hidden;
     min-height:100vh;
     background:
-      radial-gradient(circle at 15% -10%, rgba(245,166,35,0.10), transparent 50%),
-      radial-gradient(circle at 88% 18%, rgba(89,140,255,0.05), transparent 45%),
       radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.45), transparent 60%),
       linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0/42px 42px,
       linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0/42px 42px,
@@ -451,6 +479,69 @@
   }
   @media (max-width:380px){ .tab-btn .tab-icon{display:none;} .tab-btn{padding:9px 12px;} }
   @media (max-width:330px){ .tab-btn{padding:9px 9px;} .tab-bar{gap:4px;} }
+  /* Best time to call */
+  .overlap-card{margin-top:22px;}
+  .overlap-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;}
+  .overlap-head h3{margin:0 !important;}
+  .overlap-ref{font-size:.72rem;color:var(--muted);font-family:var(--mono);}
+  .overlap-summary{font-size:.88rem;line-height:1.55;margin:12px 0 14px;color:var(--text);}
+  .overlap-summary b{color:var(--amber);font-family:var(--mono);}
+  .overlap-scroll{overflow-x:auto;padding-bottom:4px;}
+  .overlap-grid{min-width:640px;display:flex;flex-direction:column;gap:4px;}
+  .ov-row{display:grid;grid-template-columns:150px repeat(24, minmax(18px,1fr));gap:3px;align-items:center;}
+  .ov-name{font-size:.76rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:8px;
+    position:sticky;left:0;background:var(--panel);z-index:1;}
+  .ov-header .ov-name{color:var(--muted);font-size:.62rem;text-transform:uppercase;letter-spacing:.07em;}
+  .ov-h{font-family:var(--mono);font-size:.62rem;color:var(--muted);text-align:left;height:18px;border-bottom:2px solid transparent;}
+  .ov-h.best{border-bottom-color:var(--green);color:var(--green);}
+  .ov-h.now{color:var(--amber);font-weight:700;}
+  .ov-cell{height:18px;border-radius:4px;position:relative;}
+  .ov-core{background:rgba(52,211,153,.75);}
+  .ov-edge{background:rgba(245,166,35,.55);}
+  .ov-off{background:rgba(124,140,170,.14);}
+  .ov-cell.best{box-shadow:inset 0 0 0 1px rgba(255,255,255,.55);}
+  .ov-cell.now::after{content:"";position:absolute;inset:-3px -1px;border:2px solid var(--amber);border-radius:5px;pointer-events:none;}
+  .overlap-legend{margin-top:12px;font-size:.72rem;color:var(--muted);}
+  .overlap-best-key{display:inline-block;width:12px;height:10px;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.7);background:rgba(52,211,153,.75);vertical-align:middle;}
+  /* Saved trips */
+  .trips-count{color:var(--muted);font-size:.75rem;margin-left:4px;}
+  .trips-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+  .trip{display:flex;justify-content:space-between;gap:12px;align-items:center;background:var(--panel-soft);border:1px solid var(--panel-edge);border-radius:12px;padding:12px 14px;flex-wrap:wrap;}
+  .trip.soon{border-color:rgba(245,166,35,.55);}
+  .trip.now{border-color:var(--green);}
+  .trip.past{opacity:.7;}
+  .trip-main{display:flex;gap:12px;align-items:flex-start;min-width:0;flex:1;}
+  .trip-flag{font-size:1.5rem;line-height:1;}
+  .trip-name{font-weight:700;font-size:.92rem;color:var(--text);}
+  .trip-when{font-family:var(--mono);font-size:.7rem;color:var(--amber);margin-left:6px;font-weight:600;}
+  .trip.now .trip-when{color:var(--green);}
+  .trip-meta{font-size:.76rem;color:var(--muted);margin-top:3px;}
+  .trip-note-text{font-size:.78rem;color:var(--text);margin-top:4px;opacity:.85;}
+  .trip-actions{display:flex;gap:6px;}
+  .trip-actions .btn-ghost{margin-left:0;}
+  .trips-past{margin-top:6px;}
+  .trips-past > summary{cursor:pointer;font-size:.78rem;color:var(--muted);margin-bottom:8px;}
+  .trips-past .trip{margin-bottom:8px;}
+  .trip-form{display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr;gap:12px;align-items:end;border-top:1px solid var(--panel-edge);padding-top:14px;}
+  .trip-form .trip-note{grid-column:1 / span 3;}
+  .trip-form .control label{display:block;font-size:.63rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:5px;}
+  .trip-form input[type=date]{color-scheme:dark;}
+  .trip-form .btn-primary{padding:10px 18px;}
+  @media (max-width:760px){ .trip-form{grid-template-columns:1fr 1fr;} .trip-form .trip-country, .trip-form .trip-note{grid-column:1 / -1;} .trip-form .btn-primary{grid-column:1 / -1;} }
+  .strip-actions{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;}
+  .strip-actions .btn-ghost{margin-left:0;}
+  /* Safety check */
+  .sub-h{font-family:var(--mono);font-size:.7rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px;font-weight:600;}
+  .alert-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .alert-list li{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:.84rem;padding:8px 0;border-bottom:1px solid var(--panel-edge);}
+  .alert-list li:last-child{border-bottom:none;}
+  .alert-list .level-badge{font-size:.7rem;padding:3px 8px;}
+  .travel-card .attr-desc a, .alert-list a{color:var(--amber);}
+  @media (max-width:560px){
+    .trip{flex-direction:column;align-items:stretch;}
+    .trip-actions{justify-content:flex-end;}
+    .trip-when{display:inline-block;margin-left:0;}
+  }
   /* Recent travel searches */
   .recent-trips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-8px 0 18px;}
   .recent-trips .recent-label{font-size:.63rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-right:4px;}
@@ -782,7 +873,10 @@
   }
 </style>
 </head>
-<body>
+<body data-page="time">
+<div class="ambient" aria-hidden="true"></div>
+<div class="ambient-layer ambient-arcs" aria-hidden="true"></div>
+<div class="ambient-layer ambient-hatch" aria-hidden="true"></div>
 
 <div class="board">
 
@@ -899,6 +993,21 @@
 
   </div>
 
+  <section class="travel-card overlap-card" id="overlapCard" aria-labelledby="overlapTitle">
+    <div class="overlap-head">
+      <h3 id="overlapTitle">📞 Best time to call</h3>
+      <span class="overlap-ref" id="overlapRef"></span>
+    </div>
+    <p class="overlap-summary" id="overlapSummary"></p>
+    <div class="overlap-scroll"><div class="overlap-grid" id="overlapGrid" role="table" aria-label="Office hours across locations for each hour of the reference day"></div></div>
+    <div class="legend overlap-legend">
+      <span><span class="status-dot dot-core"></span> Office hours</span>
+      <span><span class="status-dot dot-edge"></span> Early / late</span>
+      <span><span class="status-dot dot-off"></span> Off hours</span>
+      <span><span class="overlap-best-key"></span> Best window</span>
+    </div>
+  </section>
+
   <footer>
     Times are calculated live in your browser from each location's IANA timezone, including daylight‑saving changes — no server or network call required. Week numbers follow the ISO‑8601 standard (Monday‑start weeks, week 1 contains the year's first Thursday), based on each location's own local date. Added destinations can be taken off the board again using the Remove button on their card.
     <div class="legend">
@@ -960,6 +1069,28 @@
     </div>
 
     <div id="recentTrips" class="recent-trips" hidden></div>
+
+    <details id="tripsCard" class="travel-card res-card trips-card" open>
+      <summary><h3>🧳 Saved trips <span class="trips-count" id="tripsCount"></span></h3><span class="camp-toggle-hint">Hide</span></summary>
+      <p class="attr-desc" id="tripsStatus" style="margin:0 0 12px;"></p>
+      <div id="tripsList" class="trips-list"></div>
+      <form id="tripForm" class="trip-form" autocomplete="off">
+        <div class="control trip-country">
+          <label for="tripCountryInput">Country</label>
+          <div class="search-wrap">
+            <input type="text" id="tripCountryInput" class="search-input" placeholder="e.g. Japan" autocomplete="off"
+                   role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="tripCountryResults" required>
+            <div id="tripCountryResults" class="search-results" role="listbox"></div>
+          </div>
+        </div>
+        <div class="control"><label for="tripCityInput">City / area</label><input type="text" id="tripCityInput" class="search-input" placeholder="Optional" maxlength="80"></div>
+        <div class="control"><label for="tripFrom">From</label><input type="date" id="tripFrom" class="search-input"></div>
+        <div class="control"><label for="tripTo">To</label><input type="date" id="tripTo" class="search-input"></div>
+        <div class="control trip-note"><label for="tripNote">Note</label><input type="text" id="tripNote" class="search-input" placeholder="Optional — hotel, who's going…" maxlength="300"></div>
+        <button type="submit" class="btn-primary" id="tripSaveBtn">＋ Save trip</button>
+      </form>
+      <p class="vault-err" id="tripErr" style="margin:6px 0 0;"></p>
+    </details>
 
     <details id="quickResourcesCard" class="travel-card res-card"></details>
 
@@ -1522,11 +1653,66 @@
     }
   }
 
+  // ---------- Best time to call: office-hour overlap across all board locations ----------
+  // Columns are the 24 hours of the reference location's day; only recomputed when the
+  // hour, the reference, the format or the set of locations changes.
+  let overlapKey = '';
+  function renderOverlap(now){
+    const locs = allLocations();
+    const parentLoc = locs.find(l => l.id === state.parent);
+    const parentTz = effectiveTz(parentLoc);
+    const pp = getParts(parentTz, now);
+    const key = [state.parent, state.usZone, state.format, pp.hourNum, pp.dateStr, locs.map(l => l.id).join(',')].join('|');
+    if (key === overlapKey) return;
+    overlapKey = key;
+
+    const hourStart = now.getTime() - (parseInt(pp.m, 10) * 60 + parseInt(pp.s, 10)) * 1000 - now.getMilliseconds();
+    const instants = Array.from({ length: 24 }, (_, H) => new Date(hourStart + (H - pp.hourNum) * 3600000));
+    const fmtHour = H => state.format === '12' ? `${H % 12 || 12}${H < 12 ? 'a' : 'p'}` : String(H).padStart(2, '0');
+    const fmtRange = (a, b) => state.format === '12'
+      ? `${a % 12 || 12}:00 ${a < 12 ? 'AM' : 'PM'}–${(b % 24) % 12 || 12}:00 ${(b % 24) < 12 ? 'AM' : 'PM'}`
+      : `${String(a).padStart(2, '0')}:00–${String(b % 24).padStart(2, '0')}:00`;
+
+    const rows = locs.map(loc => {
+      const tz = effectiveTz(loc);
+      return { loc, cells: instants.map(t => { const p = getParts(tz, t); return { cls: classify(p.hourNum).cls, time: state.format === '12' ? `${p.h12}:${p.m} ${p.ampm}` : `${p.h}:${p.m}`, date: p.dateStr }; }) };
+    });
+    const score = instants.map((_, H) => {
+      let core = 0, edge = 0, off = 0;
+      rows.forEach(r => { const c = r.cells[H].cls; if (c === 'core') core++; else if (c === 'edge') edge++; else off++; });
+      return { core, edge, off, value: off ? -off * 10 + core : core * 2 + edge };
+    });
+    const best = Math.max(...score.map(s => s.value));
+    const bestCols = new Set();
+    // Longest run of best-scoring hours.
+    let run = [], bestRun = [];
+    score.forEach((s, H) => { if (s.value === best) { run.push(H); if (run.length > bestRun.length) bestRun = run.slice(); } else run = []; });
+    bestRun.forEach(H => bestCols.add(H));
+
+    const n = rows.length, s0 = score[bestRun[0]];
+    const where = `${parentLoc.name} time`;
+    let summary;
+    if (s0.off === 0 && s0.core === n) summary = `✅ Best window: <b>${fmtRange(bestRun[0], bestRun[bestRun.length - 1] + 1)}</b> ${where} — all ${n} locations are in office hours.`;
+    else if (s0.off === 0) summary = `🟡 Best window: <b>${fmtRange(bestRun[0], bestRun[bestRun.length - 1] + 1)}</b> ${where} — ${s0.core} of ${n} in office hours, the rest early or late.`;
+    else summary = `🌙 No hour suits everyone. Least disruptive: <b>${fmtRange(bestRun[0], bestRun[bestRun.length - 1] + 1)}</b> ${where} — ${s0.off} location${s0.off === 1 ? '' : 's'} outside 06:00–22:00.`;
+    document.getElementById('overlapSummary').innerHTML = summary;
+    document.getElementById('overlapRef').textContent = `Hours shown in ${parentLoc.name} time · today`;
+
+    const grid = document.getElementById('overlapGrid');
+    grid.style.setProperty('--ov-cols', 24);
+    let html = '<div class="ov-row ov-header" role="row"><span class="ov-name" role="columnheader">Location</span>' +
+      instants.map((_, H) => `<span class="ov-h${bestCols.has(H) ? ' best' : ''}${H === pp.hourNum ? ' now' : ''}" role="columnheader">${H % 3 === 0 || H === pp.hourNum ? fmtHour(H) : `<span class="sr-only">${fmtHour(H)}</span>`}</span>`).join('') + '</div>';
+    html += rows.map(r => `<div class="ov-row" role="row"><span class="ov-name" role="rowheader">${r.loc.flag} ${escapeHtml(r.loc.name)}</span>` +
+      r.cells.map((c, H) => `<span class="ov-cell ov-${c.cls}${bestCols.has(H) ? ' best' : ''}${H === pp.hourNum ? ' now' : ''}" role="cell" title="${escapeHtml(r.loc.name)}: ${c.time}, ${c.date}"><span class="sr-only">${c.time} ${c.cls === 'core' ? 'office hours' : c.cls === 'edge' ? 'early or late' : 'off hours'}</span></span>`).join('') + '</div>').join('');
+    grid.innerHTML = html;
+  }
+
   function render(){
     const now = new Date();
     if (!allLocations().some(l => l.id === state.parent)) state.parent = 'IN';
     const parentLoc = allLocations().find(l => l.id === state.parent);
     const parentTz = effectiveTz(parentLoc);
+    renderOverlap(now);
 
     allLocations().forEach(loc => {
       const tz = effectiveTz(loc);
@@ -1855,6 +2041,7 @@
     // Keep the tab in the address bar (bookmarkable, survives refresh) and remember it.
     if (location.hash !== '#' + tab) history.replaceState(null, '', '#' + tab);
     document.title = `${TAB_TITLES[tab] || 'Time'} · Global Time & Travel`;
+    document.body.dataset.page = tab;
     try { localStorage.setItem('lastTab', tab); } catch (e) {}
   }
 
@@ -1972,9 +2159,13 @@
     strip.innerHTML = `
       <span class="ltime-label">Local time in ${escapeHtml(data.destination || countryObj.name)} right now</span>
       <span class="ltime">${timeParts.h}:${timeParts.m}</span>
-      <button class="btn-ghost" type="button" id="addToTimeBtn">+ Add to Time board</button>
+      <span class="strip-actions">
+        <button class="btn-ghost" type="button" id="saveTripBtn">🧳 Save trip</button>
+        <button class="btn-ghost" type="button" id="addToTimeBtn">+ Add to Time board</button>
+      </span>
     `;
     root.appendChild(strip);
+    strip.querySelector('#saveTripBtn').addEventListener('click', () => prefillTrip(countryObj, (geo && geo.name) || ''));
     strip.querySelector('#addToTimeBtn').addEventListener('click', () => {
       addCustomLocation(effectiveTzForStrip, data.destination || countryObj.name, countryObj.flagOverride || flagFromISO2(countryObj.iso2));
       switchTab('time');
@@ -2031,6 +2222,8 @@
         panels.overview.appendChild(goodCard);
       }
     }
+
+    panels.overview.appendChild(renderSafetyCard(data.alerts, countryObj));
 
     const forecastCard = document.createElement('div');
     forecastCard.className = 'travel-card';
@@ -2703,7 +2896,8 @@
         settle(fetchAirQuality(geo.latitude, geo.longitude)),
         settle(fetchHolidays(selectedTravelCountry.iso2)),
         settle(fetchWikiSummary(geo.name, geo.admin1, geo.country || selectedTravelCountry.name)),
-        settle(fetchVisaRequirement(selectedTravelPassport && selectedTravelPassport.iso2, selectedTravelCountry.iso2))
+        settle(fetchVisaRequirement(selectedTravelPassport && selectedTravelPassport.iso2, selectedTravelCountry.iso2)),
+        settle(fetchAlerts(selectedTravelCountry, geo))
       ]);
       const [climateResult, forecastResult, places] = await Promise.all([
         fetchClimateMonthly(geo.latitude, geo.longitude)
@@ -2713,7 +2907,7 @@
         fetchNearbyPlaces(geo.latitude, geo.longitude).catch(e => ({ touristAttractions: [], natureAttractions: [], familyAttractions: [], lodging: [], transitCount: 0, error: e.message }))
       ]);
 
-      const [airResult, holidayResult, wikiResult, visaResult] = await extrasPromise;
+      const [airResult, holidayResult, wikiResult, visaResult, alertsResult] = await extrasPromise;
       const monthly = climateResult.data;
       const bestSeason = monthly.length
         ? computeBestSeason(monthly)
@@ -2802,6 +2996,7 @@
         holidays: holidayResult,
         wiki: wikiResult,
         visa: visaResult,
+        alerts: alertsResult,
         passportName: selectedTravelPassport && selectedTravelPassport.name,
         conveniences: {
           currency: currencyStr,
@@ -2821,6 +3016,196 @@
     } finally {
       goBtn.disabled = false;
     }
+  }
+
+  // ---------- Safety check: official advisory + nearby disaster alerts (via /api/alerts) ----------
+  async function fetchAlerts(countryObj, geo){
+    const q = new URLSearchParams({ iso2: countryObj.iso2, country: countryObj.name, lat: geo.latitude, lon: geo.longitude });
+    const res = await fetchWithTimeout('api/alerts?' + q, { credentials: 'same-origin', cache: 'no-store' }, 15000);
+    if (!(res.headers.get('content-type') || '').includes('application/json')) throw new Error('not available on this copy of the site');
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
+    return d;
+  }
+
+  function renderSafetyCard(result, countryObj){
+    const card = document.createElement('div');
+    card.className = 'travel-card';
+    const d = result && result.data;
+    if (!d){
+      card.innerHTML = `<h3>Safety check</h3><p class="attr-desc">Couldn't load safety information${result && result.error ? ' (' + escapeHtml(result.error) + ')' : ''}. Check the official resources above.</p>`;
+      return card;
+    }
+    const LEVELS = [
+      ['good', 'Take normal security precautions'],
+      ['ok', 'Exercise a high degree of caution'],
+      ['warn', 'Avoid non-essential travel'],
+      ['bad', 'Avoid all travel'],
+    ];
+    const a = d.advisory;
+    let advHtml;
+    if (a && a.level != null && LEVELS[a.level]){
+      const [lvl, label] = LEVELS[a.level];
+      const url = sanitizeUrl(a.url);
+      advHtml = `<div class="level-row"><span class="level-badge level-${lvl}">Level ${a.level + 1} of 4</span><span class="level-text">${escapeHtml(a.text || label)}</span></div>
+        <p class="attr-desc" style="margin-top:8px;">${a.regional ? 'Some regions of ' + escapeHtml(countryObj.name) + ' have stricter advice. ' : ''}Source: ${escapeHtml(a.source)}${a.updated ? ' · updated ' + escapeHtml(a.updated) : ''}${url ? ` · <a href="${escapeHtml(url)}" target="_blank" rel="noopener">full advisory ↗</a>` : ''}. Also check your own government's advice.</p>`;
+    } else {
+      advHtml = `<p class="attr-desc">No official advisory found${d.errors && d.errors.advisory ? ' (' + escapeHtml(d.errors.advisory) + ')' : ''}.</p>`;
+    }
+    const ICON = { Earthquake: '🌍', 'Tropical cyclone': '🌀', Flood: '🌊', Volcano: '🌋', Drought: '☀️', Wildfire: '🔥' };
+    const events = d.events || [];
+    const evHtml = d.errors && d.errors.events
+      ? `<p class="attr-desc">Couldn't load disaster alerts (${escapeHtml(d.errors.events)}).</p>`
+      : events.length
+        ? `<ul class="alert-list">${events.map(e => {
+            const url = sanitizeUrl(e.url);
+            const since = e.from ? new Date(e.from).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+            return `<li><span>${ICON[e.type] || '⚠️'} <b>${escapeHtml(e.type)}</b>${e.name ? ' — ' + escapeHtml(e.name) : ''}</span>
+              <span class="level-badge level-${/red/i.test(e.level) ? 'bad' : 'warn'}">${escapeHtml(e.level || 'Alert')}</span>
+              <span class="attr-desc">${e.distanceKm != null ? e.distanceKm + ' km away' : escapeHtml(e.country)}${since ? ' · since ' + since : ''}${url ? ` · <a href="${escapeHtml(url)}" target="_blank" rel="noopener">details ↗</a>` : ''}</span></li>`;
+          }).join('')}</ul>`
+        : `<p class="attr-desc">✓ No major (orange or red) disaster alerts within 800 km in the last 30 days.</p>`;
+    card.innerHTML = `<h3>Safety check</h3>${advHtml}<h4 class="sub-h">Natural-disaster alerts nearby</h4>${evHtml}
+      <p class="attr-desc" style="margin-top:10px;">Disaster data: GDACS (UN / European Commission).</p>`;
+    return card;
+  }
+
+  // ---------- Saved trips (shared with family via /api/trips, else this browser only) ----------
+  const TRIPS_API = 'api/trips', TRIPS_LOCAL = 'savedTrips.local';
+  let trips = [], tripsRev = 0, tripsShared = false, tripCountry = null;
+  const todayIso = () => new Date().toISOString().slice(0, 10);
+
+  async function loadTrips(){
+    try {
+      const res = await fetchWithTimeout(TRIPS_API, { credentials: 'same-origin', cache: 'no-store' }, 8000);
+      if (!res.ok || !(res.headers.get('content-type') || '').includes('application/json')) throw new Error('unavailable');
+      const d = await res.json();
+      trips = Array.isArray(d.trips) ? d.trips : []; tripsRev = d.rev || 0; tripsShared = true;
+    } catch (e){
+      tripsShared = false;
+      try { trips = JSON.parse(localStorage.getItem(TRIPS_LOCAL)) || []; } catch (err) { trips = []; }
+    }
+    renderTrips();
+  }
+
+  // Apply a change; on a conflict re-read the shared list and apply it again, so nobody's edit is lost.
+  async function updateTrips(mutate){
+    if (!tripsShared){
+      trips = mutate(trips.slice());
+      try { localStorage.setItem(TRIPS_LOCAL, JSON.stringify(trips)); } catch (e) {}
+      renderTrips(); return true;
+    }
+    for (let attempt = 0; attempt < 3; attempt++){
+      const next = mutate(trips.slice());
+      let res, d = {};
+      try {
+        res = await fetch(TRIPS_API, { method: 'PUT', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ baseRev: tripsRev, trips: next }) });
+        d = await res.json();
+      } catch (e){ break; }
+      if (res.ok){ trips = d.trips || next; tripsRev = d.rev; renderTrips(); return true; }
+      if (res.status === 409){ trips = d.trips || []; tripsRev = d.rev || 0; continue; }
+      break;
+    }
+    document.getElementById('tripErr').textContent = "Couldn't save — check your connection and try again.";
+    return false;
+  }
+
+  function fmtTripDates(t){
+    const f = iso => new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (t.from && t.to) return `${f(t.from)} – ${f(t.to)}`;
+    return t.from ? `from ${f(t.from)}` : t.to ? `until ${f(t.to)}` : 'dates not set';
+  }
+  function tripWhen(t){
+    const today = todayIso();
+    if (t.from && t.from <= today && (!t.to || t.to >= today)) return { cls: 'now', text: '✈️ Happening now' };
+    if (t.to && t.to < today) return { cls: 'past', text: 'Past' };
+    if (!t.from) return { cls: '', text: '' };
+    const days = Math.round((new Date(t.from + 'T12:00:00') - new Date(today + 'T12:00:00')) / 86400000);
+    return { cls: days <= 14 ? 'soon' : '', text: days === 1 ? 'Tomorrow' : `in ${days} days` };
+  }
+
+  function renderTrips(){
+    const today = todayIso();
+    const sorted = trips.slice().sort((a, b) => (a.from || '9999').localeCompare(b.from || '9999'));
+    const upcoming = sorted.filter(t => !t.to || t.to >= today);
+    const past = sorted.filter(t => t.to && t.to < today).reverse();
+    document.getElementById('tripsCount').textContent = upcoming.length ? `(${upcoming.length})` : '';
+    document.getElementById('tripsStatus').textContent = tripsShared
+      ? 'Shared with family — everyone signed in sees the same list.'
+      : 'Saved on this device only (family sharing is available on the main site).';
+    const item = t => {
+      const c = COUNTRIES.find(x => x.name === t.country);
+      const flag = c ? (c.flagOverride || flagFromISO2(c.iso2)) : '📍';
+      const w = tripWhen(t);
+      return `<div class="trip ${w.cls}">
+        <div class="trip-main"><span class="trip-flag" aria-hidden="true">${flag}</span>
+          <div><div class="trip-name">${escapeHtml(t.city ? t.city + ', ' + t.country : t.country)}${w.text ? ` <span class="trip-when">${escapeHtml(w.text)}</span>` : ''}</div>
+          <div class="trip-meta">${escapeHtml(fmtTripDates(t))}${t.addedBy ? ' · added by ' + escapeHtml(t.addedBy.split('@')[0]) : ''}</div>
+          ${t.note ? `<div class="trip-note-text">${escapeHtml(t.note)}</div>` : ''}</div></div>
+        <div class="trip-actions">
+          ${c ? `<button type="button" class="btn-ghost" data-trip-open="${escapeHtml(t.id)}">Plan ↗</button>` : ''}
+          <button type="button" class="btn-ghost vault-danger" data-trip-del="${escapeHtml(t.id)}" aria-label="Delete trip to ${escapeHtml(t.country)}">✕</button>
+        </div></div>`;
+    };
+    const list = document.getElementById('tripsList');
+    list.innerHTML = (upcoming.length ? upcoming.map(item).join('') : '<p class="attr-desc">No upcoming trips yet — add one below, or use “🧳 Save trip” after a search.</p>') +
+      (past.length ? `<details class="trips-past"><summary>Past trips (${past.length})</summary>${past.map(item).join('')}</details>` : '');
+    list.querySelectorAll('[data-trip-open]').forEach(b => b.addEventListener('click', () => {
+      const t = trips.find(x => x.id === b.dataset.tripOpen);
+      const c = t && COUNTRIES.find(x => x.name === t.country);
+      if (!c) return;
+      selectedTravelCountry = c;
+      document.getElementById('travelCountryInput').value = c.name;
+      document.getElementById('travelGoBtn').disabled = false;
+      renderCityChips(c);
+      document.getElementById('travelLocationInput').value = t.city || '';
+      fetchTravelInfo();
+      document.getElementById('travelStatus').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+    list.querySelectorAll('[data-trip-del]').forEach(b => b.addEventListener('click', () => {
+      const t = trips.find(x => x.id === b.dataset.tripDel);
+      if (!t || !confirm(`Delete the trip to ${t.city ? t.city + ', ' : ''}${t.country}?`)) return;
+      updateTrips(list => list.filter(x => x.id !== t.id));
+    }));
+  }
+
+  function prefillTrip(countryObj, city){
+    tripCountry = countryObj;
+    document.getElementById('tripCountryInput').value = countryObj.name;
+    document.getElementById('tripCityInput').value = city || '';
+    const card = document.getElementById('tripsCard');
+    card.open = true;
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => document.getElementById('tripFrom').focus(), 400);
+  }
+
+  function buildTrips(){
+    createCountryCombobox('tripCountryInput', 'tripCountryResults', c => {
+      tripCountry = c;
+      document.getElementById('tripCountryInput').value = c.name;
+    });
+    document.getElementById('tripForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const err = document.getElementById('tripErr');
+      err.textContent = '';
+      const name = document.getElementById('tripCountryInput').value.trim();
+      const c = (tripCountry && tripCountry.name === name) ? tripCountry : COUNTRIES.find(x => x.name.toLowerCase() === name.toLowerCase());
+      const from = document.getElementById('tripFrom').value, to = document.getElementById('tripTo').value;
+      if (!c){ err.textContent = 'Pick a country from the list.'; return; }
+      if (from && to && to < from){ err.textContent = 'The end date is before the start date.'; return; }
+      const trip = {
+        id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+        country: c.name, city: document.getElementById('tripCityInput').value.trim(),
+        from, to, note: document.getElementById('tripNote').value.trim(), addedAt: new Date().toISOString()
+      };
+      const btn = document.getElementById('tripSaveBtn');
+      btn.disabled = true;
+      if (await updateTrips(list => list.concat(trip))){
+        e.target.reset(); tripCountry = null;
+      }
+      btn.disabled = false;
+    });
+    loadTrips();
   }
 
   // ---------- Recent travel searches (this browser only) ----------
@@ -2945,11 +3330,12 @@
     flightInput.addEventListener('keydown', e => { if (e.key === 'Enter') trackFlight(); });
 
     renderQuickResources();
-    document.getElementById('quickResourcesCard').addEventListener('toggle', e => {
-      const hint = e.currentTarget.querySelector('.camp-toggle-hint');
+    document.querySelectorAll('#page-travel .res-card').forEach(card => card.addEventListener('toggle', e => {
+      const hint = e.currentTarget.querySelector(':scope > summary .camp-toggle-hint');
       if (hint) hint.textContent = e.currentTarget.open ? 'Hide' : 'Show';
-    });
+    }));
     renderRecent();
+    buildTrips();
   }
 
   let calendarViewDate = new Date();
