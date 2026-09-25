@@ -422,17 +422,16 @@
   .search-empty{padding:12px 13px;color:var(--muted);font-size:.8rem;}
 
   .tab-bar{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;}
-  .tab-btn,.tab-link{
+  .tab-btn{
     background:var(--panel-soft);border:1px solid var(--panel-edge-soft);color:var(--muted);
     font-family:var(--mono);font-weight:600;letter-spacing:.05em;font-size:.75rem;
     padding:9px 18px;border-radius:8px 8px 0 0;cursor:pointer;
     transition:color .18s var(--ease), border-color .18s var(--ease), background .18s var(--ease);
   }
-  .tab-btn .tab-icon,.tab-link .tab-icon{margin-right:6px;}
-  .tab-link{margin-left:auto;text-decoration:none;display:inline-flex;align-items:center;}
-  .tab-btn:hover:not(.active),.tab-link:hover{color:var(--text);border-color:var(--panel-edge);}
+  .tab-btn .tab-icon{margin-right:6px;}
+  .tab-btn:hover:not(.active){color:var(--text);border-color:var(--panel-edge);}
   .tab-btn.active{color:var(--amber);border-color:var(--amber);background:var(--bg);box-shadow:inset 0 -2px 0 var(--amber);}
-  .tab-btn:focus-visible,.tab-link:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+  .tab-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
 
   .page{display:none;}
   .page.active{display:block;animation:pageIn .32s var(--ease);}
@@ -602,6 +601,62 @@
   .back-to-top:hover{filter:brightness(1.1);}
   .back-to-top:focus-visible{outline:2px solid var(--text);outline-offset:3px;}
   @media (prefers-reduced-motion: reduce){.back-to-top{transition:opacity .01s;}}
+
+  /* ---------- Password vault tab ---------- */
+  .vault-hidden{display:none !important;}
+  .vault-auth{max-width:460px;}
+  .vault-auth .control + .control{margin-top:14px;}
+  .vault-hint{font-size:.85rem;color:var(--muted);margin:0 0 16px;line-height:1.5;}
+  .vault-err{color:#f87171;font-size:.8rem;min-height:1.2em;margin:10px 0;font-family:var(--mono);}
+  .vault-actions{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:16px;}
+  .vault-note{border-left:3px solid var(--amber);background:var(--amber-soft);padding:10px 12px;border-radius:6px;
+    font-size:.78rem;line-height:1.55;color:var(--text);margin-top:18px;}
+  #page-vault .btn-ghost,.vault-dialog .btn-ghost{margin-left:0;}
+  .vault-danger:hover{border-color:#f87171 !important;color:#f87171 !important;}
+  .vault-strength{height:4px;border-radius:4px;background:var(--panel-edge);overflow:hidden;margin-top:6px;}
+  .vault-strength i{display:block;height:100%;width:0;background:#f87171;transition:width .2s,background .2s;}
+  .vault-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+  .vault-toolbar .search-input{flex:1;min-width:180px;}
+  .vault-toolbar .btn-primary{padding:9px 18px;}
+  .vault-help{font-size:.8rem;color:var(--muted);margin:0 0 18px;line-height:1.5;}
+  .vault-entry{padding:18px 20px;margin-bottom:12px;}
+  .vault-entry-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;}
+  .vault-entry-title{font-family:var(--mono);font-weight:700;font-size:.95rem;color:var(--text);overflow-wrap:anywhere;}
+  .vault-entry-url{font-size:.75rem;color:var(--muted);}
+  .vault-entry-url:hover{color:var(--amber);}
+  .vault-btns{display:flex;gap:6px;flex-wrap:wrap;}
+  .vault-field{display:flex;align-items:center;gap:8px;margin-top:12px;}
+  .vault-field .k{width:82px;flex:none;font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
+  .vault-field .v{flex:1;min-width:0;font-family:var(--mono);font-size:.85rem;background:var(--panel-soft);
+    border:1px dashed var(--panel-edge);border-radius:7px;padding:7px 10px;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;cursor:grab;user-select:all;}
+  .vault-copy{padding:7px 14px !important;font-size:.76rem !important;}
+  .vault-notes{margin-top:12px;font-size:.8rem;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;}
+  .vault-empty{text-align:center;padding:36px 10px;color:var(--muted);font-size:.9rem;}
+  .vault-row{display:flex;gap:8px;align-items:center;}
+  .vault-row .search-input{flex:1;min-width:0;}
+  .vault-gen{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:.78rem;color:var(--muted);margin-top:12px;}
+  .vault-gen label{display:inline-flex;gap:5px;align-items:center;}
+  .vault-gen input[type=range]{width:110px;accent-color:var(--amber);}
+  .vault-gen input[type=checkbox]{accent-color:var(--amber);}
+  .vault-dialog{background:var(--panel);color:var(--text);border:1px solid var(--panel-edge);border-radius:var(--radius);
+    padding:22px;width:min(560px, calc(100vw - 32px));font-family:var(--sans);}
+  .vault-dialog::backdrop{background:rgba(0,0,0,.6);}
+  .vault-dialog h3{font-family:var(--mono);color:var(--amber);font-size:.83rem;letter-spacing:.07em;margin:0 0 16px;text-transform:uppercase;}
+  .vault-dialog .control{margin-bottom:12px;}
+  .vault-dialog .control label{display:block;font-size:.63rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:5px;}
+  .vault-dialog textarea.search-input{min-height:64px;resize:vertical;}
+  .vault-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
+  .vault-dialog .btn-primary{padding:9px 20px;}
+  .vault-mono{font-family:var(--mono) !important;}
+  .vault-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--amber);color:#1a1100;
+    padding:10px 16px;border-radius:10px;font-weight:600;font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .2s;
+    max-width:calc(100vw - 32px);text-align:center;z-index:60;font-family:var(--sans);}
+  .vault-toast.show{opacity:1;}
+  @media (max-width:560px){
+    .vault-field{flex-wrap:wrap;}
+    .vault-field .k{width:100%;}
+  }
 </style>
 </head>
 <body>
@@ -611,7 +666,7 @@
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="time" type="button"><span class="tab-icon">🕐</span>TIME</button>
     <button class="tab-btn" data-tab="travel" type="button"><span class="tab-icon">✈️</span>TRAVEL</button>
-    <a class="tab-link" href="vault.html"><span class="tab-icon">🔐</span>VAULT</a>
+    <button class="tab-btn" data-tab="vault" type="button"><span class="tab-icon">🔐</span>VAULT</button>
   </div>
 
   <div id="page-time" class="page active">
@@ -792,6 +847,61 @@
 
     <div id="travelStatus" class="travel-status"></div>
     <div id="travelResults"></div>
+
+  </div>
+
+  <div id="page-vault" class="page">
+
+    <div class="board-header">
+      <div class="title-block">
+        <div class="title-meta-row">
+          <span class="eyebrow">Encrypted in this browser, never uploaded</span>
+        </div>
+        <h1>PASSWORD <span>VAULT</span></h1>
+        <p>Store your passwords under one master password. Click Copy to put a username or password on the clipboard, then paste it into any login form. The clipboard clears itself after 30 seconds.</p>
+      </div>
+    </div>
+
+    <!-- Setup / unlock -->
+    <div id="vaultAuthView" class="travel-card vault-auth">
+      <h3 id="vaultAuthTitle">Unlock vault</h3>
+      <p id="vaultAuthHint" class="vault-hint"></p>
+      <form id="vaultAuthForm" autocomplete="off">
+        <div class="control">
+          <label for="vaultMaster">Master password</label>
+          <input id="vaultMaster" type="password" class="search-input vault-mono" autocomplete="current-password" required>
+        </div>
+        <div id="vaultConfirmWrap" class="control vault-hidden">
+          <label for="vaultMaster2">Confirm master password</label>
+          <input id="vaultMaster2" type="password" class="search-input vault-mono" autocomplete="new-password">
+          <div class="vault-strength"><i id="vaultMasterStrength"></i></div>
+        </div>
+        <div class="vault-err" id="vaultAuthErr"></div>
+        <button class="btn-primary" type="submit" id="vaultAuthSubmit">Unlock</button>
+      </form>
+      <div class="vault-actions">
+        <button class="btn-ghost" id="vaultImportFromAuth" type="button">Restore from backup…</button>
+        <button class="btn-ghost vault-danger vault-hidden" id="vaultReset" type="button">Erase vault</button>
+      </div>
+      <div class="vault-note">
+        Everything is encrypted with AES-256-GCM using a key derived from your master password
+        (PBKDF2-SHA256, 600,000 iterations). Nothing is sent to any server. If you forget the master
+        password, the data cannot be recovered.
+      </div>
+    </div>
+
+    <!-- Unlocked vault -->
+    <div id="vaultMainView" class="vault-hidden">
+      <div class="vault-toolbar">
+        <input id="vaultSearch" type="search" class="search-input" placeholder="Search site, username, notes…" autocomplete="off">
+        <button class="btn-primary" id="vaultAddBtn" type="button">+ Add</button>
+        <button class="btn-ghost" id="vaultExportBtn" type="button">Export</button>
+        <button class="btn-ghost" id="vaultImportBtn" type="button">Import</button>
+        <button class="btn-ghost" id="vaultLockBtn" type="button">🔒 Lock</button>
+      </div>
+      <p class="vault-help">Tip: you can also drag a username or password straight into a login field. The vault locks itself after 5 minutes of inactivity.</p>
+      <div id="vaultList"></div>
+    </div>
 
   </div>
 
@@ -2479,6 +2589,7 @@
     input.focus();
   });
   buildTabs();
+  if (document.getElementById('page-' + location.hash.slice(1))) switchTab(location.hash.slice(1));
   buildTravelPage();
   buildMiniCalendar();
   buildTimeConverter();
@@ -2486,6 +2597,466 @@
   render();
   setInterval(render, 1000);
 
+})();
+</script>
+
+<!-- Password vault: add / edit dialog -->
+<dialog id="vaultEditDlg" class="vault-dialog">
+  <form id="vaultEditForm" method="dialog" autocomplete="off">
+    <h3 id="vaultEditTitle">Add entry</h3>
+    <div class="control">
+      <label for="vaultFName">Name / site</label>
+      <input id="vaultFName" class="search-input" required maxlength="200">
+    </div>
+    <div class="control">
+      <label for="vaultFUrl">URL</label>
+      <input id="vaultFUrl" class="search-input" type="url" placeholder="https://" maxlength="500">
+    </div>
+    <div class="control">
+      <label for="vaultFUser">Username / email</label>
+      <div class="vault-row">
+        <input id="vaultFUser" class="search-input vault-mono" maxlength="300">
+        <button type="button" class="btn-ghost" data-vault-paste="vaultFUser">Paste</button>
+      </div>
+    </div>
+    <div class="control">
+      <label for="vaultFPass">Password</label>
+      <div class="vault-row">
+        <input id="vaultFPass" type="password" class="search-input vault-mono" maxlength="500">
+        <button type="button" class="btn-ghost" id="vaultTogglePass">Show</button>
+        <button type="button" class="btn-ghost" data-vault-paste="vaultFPass">Paste</button>
+      </div>
+      <div class="vault-strength"><i id="vaultPassStrength"></i></div>
+      <div class="vault-gen">
+        <button type="button" class="btn-ghost" id="vaultGenBtn">Generate</button>
+        <label>Length <input type="range" id="vaultGenLen" min="8" max="64" value="20"> <span id="vaultGenLenVal" class="vault-mono">20</span></label>
+        <label><input type="checkbox" id="vaultGenUpper" checked> A-Z</label>
+        <label><input type="checkbox" id="vaultGenDigits" checked> 0-9</label>
+        <label><input type="checkbox" id="vaultGenSymbols" checked> !@#</label>
+      </div>
+    </div>
+    <div class="control">
+      <label for="vaultFNotes">Notes</label>
+      <textarea id="vaultFNotes" class="search-input" maxlength="2000"></textarea>
+    </div>
+    <div class="vault-dialog-actions">
+      <button type="button" class="btn-ghost" id="vaultCancelEdit">Cancel</button>
+      <button type="submit" class="btn-primary">Save</button>
+    </div>
+  </form>
+</dialog>
+<input type="file" id="vaultImportFile" accept="application/json,.json" class="vault-hidden">
+<div class="vault-toast" id="vaultToast" role="status" aria-live="polite"></div>
+
+<script>
+// ---------- Password vault tab ----------
+// All data is encrypted client-side (PBKDF2-SHA256 -> AES-256-GCM) and kept in localStorage.
+(() => {
+  'use strict';
+
+  const STORE_KEY = 'pwvault.v1';
+  const ITERATIONS = 600000;
+  const CLIPBOARD_CLEAR_MS = 30000;
+  const AUTO_LOCK_MS = 5 * 60 * 1000;
+
+  const $ = id => document.getElementById(id);
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+
+  let key = null;       // CryptoKey while unlocked
+  let salt = null;      // Uint8Array
+  let entries = [];     // decrypted entries while unlocked
+  let editingId = null;
+  let lockTimer = null;
+  let clipTimer = null;
+
+  // ---------- helpers ----------
+  const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+  function toast(msg) {
+    const t = $('vaultToast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  function readStore() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch { return null; }
+  }
+  function writeStore(obj) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(obj)); return true; }
+    catch { toast('Could not save — browser storage unavailable'); return false; }
+  }
+
+  // ---------- crypto ----------
+  async function deriveKey(password, saltBytes) {
+    const base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: saltBytes, iterations: ITERATIONS, hash: 'SHA-256' },
+      base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function encryptJSON(k, data) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, enc.encode(JSON.stringify(data)));
+    return { iv: b64(iv), ct: b64(ct) };
+  }
+  async function decryptJSON(k, box) {
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(box.iv) }, k, unb64(box.ct));
+    return JSON.parse(dec.decode(pt));
+  }
+  async function persist() {
+    const box = await encryptJSON(key, entries);
+    return writeStore({ v: 1, kdf: 'PBKDF2-SHA256', iter: ITERATIONS, salt: b64(salt), ...box });
+  }
+
+  // ---------- strength ----------
+  function strength(pw) {
+    if (!pw) return 0;
+    let pool = 0;
+    if (/[a-z]/.test(pw)) pool += 26;
+    if (/[A-Z]/.test(pw)) pool += 26;
+    if (/[0-9]/.test(pw)) pool += 10;
+    if (/[^A-Za-z0-9]/.test(pw)) pool += 33;
+    return pw.length * Math.log2(pool || 1); // bits
+  }
+  function paintStrength(el, pw) {
+    const bits = strength(pw);
+    el.style.width = Math.min(100, bits) + '%';
+    el.style.background = bits < 40 ? '#f87171' : bits < 70 ? 'var(--amber)' : 'var(--green)';
+  }
+
+  // ---------- auth ----------
+  function showAuth() {
+    const exists = !!readStore();
+    $('vaultAuthTitle').textContent = exists ? 'Unlock vault' : 'Create your vault';
+    $('vaultAuthHint').textContent = exists
+      ? 'Enter your master password to unlock.'
+      : 'Choose a strong master password (12+ characters). It is the only key to your data.';
+    $('vaultAuthSubmit').textContent = exists ? 'Unlock' : 'Create vault';
+    $('vaultConfirmWrap').classList.toggle('vault-hidden', exists);
+    $('vaultMaster2').required = !exists;
+    $('vaultMaster').autocomplete = exists ? 'current-password' : 'new-password';
+    $('vaultReset').classList.toggle('vault-hidden', !exists);
+    $('vaultAuthErr').textContent = '';
+    $('vaultAuthView').classList.remove('vault-hidden');
+    $('vaultMainView').classList.add('vault-hidden');
+    $('vaultMaster').value = '';
+    $('vaultMaster2').value = '';
+    paintStrength($('vaultMasterStrength'), '');
+  }
+
+  $('vaultMaster').addEventListener('input', e => paintStrength($('vaultMasterStrength'), e.target.value));
+
+  $('vaultAuthForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const pw = $('vaultMaster').value;
+    const store = readStore();
+    const btn = $('vaultAuthSubmit');
+    $('vaultAuthErr').textContent = '';
+    btn.disabled = true;
+    const label = btn.textContent;
+    btn.textContent = 'Working…';
+    try {
+      if (!store) {
+        if (pw.length < 12) throw new Error('Use at least 12 characters.');
+        if (pw !== $('vaultMaster2').value) throw new Error('Passwords do not match.');
+        salt = crypto.getRandomValues(new Uint8Array(16));
+        key = await deriveKey(pw, salt);
+        entries = [];
+        await persist();
+      } else {
+        salt = unb64(store.salt);
+        const k = await deriveKey(pw, salt);
+        try { entries = await decryptJSON(k, store); }
+        catch { throw new Error('Wrong master password.'); }
+        key = k;
+      }
+      openVault();
+    } catch (err) {
+      $('vaultAuthErr').textContent = err.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+      $('vaultMaster').value = '';
+      $('vaultMaster2').value = '';
+    }
+  });
+
+  $('vaultReset').addEventListener('click', () => {
+    if (!confirm('Permanently erase the vault stored in this browser? Export a backup first if you need it.')) return;
+    try { localStorage.removeItem(STORE_KEY); } catch {}
+    showAuth();
+  });
+
+  function lock() {
+    key = null; salt = null; entries = []; editingId = null;
+    $('vaultList').replaceChildren();
+    $('vaultSearch').value = '';
+    if ($('vaultEditDlg').open) $('vaultEditDlg').close();
+    clearTimeout(lockTimer);
+    showAuth();
+  }
+  $('vaultLockBtn').addEventListener('click', lock);
+
+  function bumpLock() {
+    if (!key) return;
+    clearTimeout(lockTimer);
+    lockTimer = setTimeout(() => { lock(); toast('Vault locked after inactivity'); }, AUTO_LOCK_MS);
+  }
+  ['pointerdown', 'keydown', 'scroll'].forEach(ev => document.addEventListener(ev, bumpLock, { passive: true }));
+
+  function openVault() {
+    $('vaultAuthView').classList.add('vault-hidden');
+    $('vaultMainView').classList.remove('vault-hidden');
+    render();
+    bumpLock();
+  }
+
+  // ---------- clipboard (output / input) ----------
+  async function copyValue(value, what) {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = value; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      if (!ok) { toast('Copy blocked by the browser'); return; }
+    }
+    toast(`${what} copied — clears in ${CLIPBOARD_CLEAR_MS / 1000}s`);
+    clearTimeout(clipTimer);
+    clipTimer = setTimeout(async () => {
+      try {
+        // Only clear if the clipboard still holds our value.
+        const cur = await navigator.clipboard.readText().catch(() => value);
+        if (cur === value) await navigator.clipboard.writeText('');
+      } catch {}
+    }, CLIPBOARD_CLEAR_MS);
+  }
+
+  document.querySelectorAll('[data-vault-paste]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const target = $(btn.dataset.vaultPaste);
+      try {
+        target.value = (await navigator.clipboard.readText()).trim();
+        target.dispatchEvent(new Event('input'));
+        toast('Pasted from clipboard');
+      } catch {
+        target.focus();
+        toast('Browser blocked clipboard read — press Ctrl/Cmd+V');
+      }
+    });
+  });
+
+  // ---------- render ----------
+  function el(tag, props = {}, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'class') n.className = v;
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v);
+    }
+    for (const kid of kids) if (kid != null) n.append(kid);
+    return n;
+  }
+
+  function safeUrl(u) {
+    try { const p = new URL(u); return /^https?:$/.test(p.protocol) ? p.href : null; } catch { return null; }
+  }
+
+  function fieldRow(label, value, secret) {
+    let shown = !secret;
+    const v = el('div', { class: 'v', draggable: 'true', title: 'Drag into a login field, or use Copy' });
+    const paint = () => { v.textContent = shown ? value : '•'.repeat(Math.min(value.length, 16)); };
+    paint();
+    v.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', value));
+    const kids = [el('span', { class: 'k' }, label), v];
+    if (secret) {
+      const t = el('button', { class: 'btn-ghost', type: 'button' }, 'Show');
+      t.addEventListener('click', () => { shown = !shown; t.textContent = shown ? 'Hide' : 'Show'; paint(); });
+      kids.push(t);
+    }
+    kids.push(el('button', { class: 'btn-primary vault-copy', type: 'button', onclick: () => copyValue(value, label) }, 'Copy'));
+    return el('div', { class: 'vault-field' }, ...kids);
+  }
+
+  function render() {
+    const q = $('vaultSearch').value.trim().toLowerCase();
+    const list = $('vaultList');
+    const shown = entries
+      .filter(x => !q || [x.name, x.user, x.url, x.notes].some(f => (f || '').toLowerCase().includes(q)))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (!shown.length) {
+      list.replaceChildren(el('div', { class: 'travel-card vault-empty' },
+        entries.length ? 'No matches.' : 'Your vault is empty. Click “+ Add” to store your first password.'));
+      return;
+    }
+    list.replaceChildren(...shown.map(x => {
+      const url = safeUrl(x.url);
+      const head = el('div', { class: 'vault-entry-head' },
+        el('div', {},
+          el('div', { class: 'vault-entry-title' }, x.name),
+          url ? el('a', { href: url, target: '_blank', rel: 'noopener noreferrer', class: 'vault-entry-url' }, new URL(url).host) : null),
+        el('div', { class: 'vault-btns' },
+          el('button', { class: 'btn-ghost', type: 'button', onclick: () => openEditor(x.id) }, 'Edit'),
+          el('button', { class: 'btn-ghost vault-danger', type: 'button', onclick: () => remove(x.id) }, 'Delete')));
+      return el('div', { class: 'travel-card vault-entry' },
+        head,
+        x.user ? fieldRow('Username', x.user, false) : null,
+        x.pass ? fieldRow('Password', x.pass, true) : null,
+        x.notes ? el('div', { class: 'vault-notes' }, x.notes) : null);
+    }));
+  }
+  $('vaultSearch').addEventListener('input', render);
+
+  // ---------- add / edit ----------
+  function openEditor(id) {
+    editingId = id || null;
+    const x = entries.find(e => e.id === id) || {};
+    $('vaultEditTitle').textContent = id ? 'Edit entry' : 'Add entry';
+    $('vaultFName').value = x.name || '';
+    $('vaultFUrl').value = x.url || '';
+    $('vaultFUser').value = x.user || '';
+    $('vaultFPass').value = x.pass || '';
+    $('vaultFNotes').value = x.notes || '';
+    $('vaultFPass').type = 'password';
+    $('vaultTogglePass').textContent = 'Show';
+    paintStrength($('vaultPassStrength'), $('vaultFPass').value);
+    $('vaultEditDlg').showModal();
+    $('vaultFName').focus();
+  }
+  $('vaultAddBtn').addEventListener('click', () => openEditor(null));
+  $('vaultCancelEdit').addEventListener('click', () => $('vaultEditDlg').close());
+  $('vaultTogglePass').addEventListener('click', () => {
+    const p = $('vaultFPass');
+    p.type = p.type === 'password' ? 'text' : 'password';
+    $('vaultTogglePass').textContent = p.type === 'password' ? 'Show' : 'Hide';
+  });
+  $('vaultFPass').addEventListener('input', e => paintStrength($('vaultPassStrength'), e.target.value));
+
+  $('vaultEditForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = {
+      name: $('vaultFName').value.trim(),
+      url: $('vaultFUrl').value.trim(),
+      user: $('vaultFUser').value.trim(),
+      pass: $('vaultFPass').value,
+      notes: $('vaultFNotes').value.trim(),
+      updated: Date.now(),
+    };
+    if (!data.name) return;
+    if (editingId) {
+      Object.assign(entries.find(x => x.id === editingId), data);
+    } else {
+      entries.push({ id: crypto.randomUUID ? crypto.randomUUID() : b64(crypto.getRandomValues(new Uint8Array(12))), ...data });
+    }
+    if (await persist()) toast('Saved');
+    $('vaultEditDlg').close();
+    render();
+  });
+
+  async function remove(id) {
+    const x = entries.find(e => e.id === id);
+    if (!x || !confirm(`Delete “${x.name}”?`)) return;
+    entries = entries.filter(e => e.id !== id);
+    await persist();
+    render();
+    toast('Deleted');
+  }
+
+  // ---------- generator ----------
+  function randomInt(max) {
+    // unbiased random integer in [0, max)
+    const limit = Math.floor(0x100000000 / max) * max;
+    const buf = new Uint32Array(1);
+    do { crypto.getRandomValues(buf); } while (buf[0] >= limit);
+    return buf[0] % max;
+  }
+  function generate() {
+    const sets = ['abcdefghijkmnopqrstuvwxyz'];
+    if ($('vaultGenUpper').checked) sets.push('ABCDEFGHJKLMNPQRSTUVWXYZ');
+    if ($('vaultGenDigits').checked) sets.push('23456789');
+    if ($('vaultGenSymbols').checked) sets.push('!@#$%^&*()-_=+[]{};:,.?');
+    const len = +$('vaultGenLen').value;
+    const all = sets.join('');
+    // one char from each chosen set, then fill, then shuffle
+    const chars = sets.map(s => s[randomInt(s.length)]);
+    while (chars.length < len) chars.push(all[randomInt(all.length)]);
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = randomInt(i + 1);
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join('');
+  }
+  $('vaultGenLen').addEventListener('input', e => { $('vaultGenLenVal').textContent = e.target.value; });
+  $('vaultGenBtn').addEventListener('click', () => {
+    $('vaultFPass').value = generate();
+    $('vaultFPass').type = 'text';
+    $('vaultTogglePass').textContent = 'Hide';
+    paintStrength($('vaultPassStrength'), $('vaultFPass').value);
+  });
+
+  // ---------- export / import (encrypted backup) ----------
+  $('vaultExportBtn').addEventListener('click', () => {
+    const store = readStore();
+    if (!store) return;
+    const blob = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
+    const a = el('a', { href: URL.createObjectURL(blob), download: `vault-backup-${new Date().toISOString().slice(0, 10)}.json` });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    toast('Encrypted backup downloaded');
+  });
+
+  const pickImport = () => $('vaultImportFile').click();
+  $('vaultImportBtn').addEventListener('click', pickImport);
+  $('vaultImportFromAuth').addEventListener('click', pickImport);
+
+  $('vaultImportFile').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    let backup;
+    try {
+      backup = JSON.parse(await file.text());
+      if (!backup || backup.v !== 1 || !backup.salt || !backup.iv || !backup.ct) throw 0;
+    } catch { toast('Not a valid vault backup file'); return; }
+
+    const pw = prompt('Master password used for this backup:');
+    if (pw == null) return;
+    let imported;
+    try {
+      const k = await deriveKey(pw, unb64(backup.salt));
+      imported = await decryptJSON(k, backup);
+      if (!Array.isArray(imported)) throw 0;
+    } catch { toast('Wrong password or corrupted backup'); return; }
+
+    if (key) {
+      // Merge into the open vault (re-encrypted with the current master password).
+      const ids = new Set(entries.map(x => x.id));
+      let added = 0;
+      for (const x of imported) if (x && x.id && !ids.has(x.id)) { entries.push(x); added++; }
+      await persist();
+      render();
+      toast(`Imported ${added} new entr${added === 1 ? 'y' : 'ies'}`);
+    } else {
+      if (readStore() && !confirm('Replace the vault in this browser with this backup?')) return;
+      writeStore(backup);
+      showAuth();
+      toast('Backup restored — unlock with its master password');
+    }
+  });
+
+  // Lock on page hide so a page restored from the back/forward cache is not left open.
+  window.addEventListener('pagehide', () => { if (key) lock(); });
+
+  showAuth();
+  if (!window.crypto || !crypto.subtle) {
+    $('vaultAuthErr').textContent = 'This page must be opened over HTTPS (or localhost) for encryption to work.';
+    $('vaultAuthSubmit').disabled = true;
+  }
 })();
 </script>
 
