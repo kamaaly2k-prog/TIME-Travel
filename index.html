@@ -507,6 +507,24 @@
   .forecast-icon{font-size:1.3rem;margin:5px 0;}
   .forecast-temp{font-size:.78rem;color:var(--text);font-weight:600;}
   .forecast-precip{font-size:.68rem;color:var(--muted);margin-top:2px;}
+  .wiki-summary{display:flex;gap:16px;align-items:flex-start;}
+  .wiki-thumb{width:120px;height:120px;object-fit:cover;border-radius:10px;flex:none;border:1px solid var(--panel-edge);}
+  .wiki-link{display:inline-block;margin-top:8px;font-size:.78rem;color:var(--amber);}
+  .level-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .level-badge{font-family:var(--mono);font-weight:700;font-size:.85rem;padding:6px 12px;border-radius:8px;border:1px solid;}
+  .level-good{color:var(--green);border-color:var(--green);background:rgba(52,211,153,.1);}
+  .level-ok{color:var(--amber);border-color:var(--amber);background:var(--amber-soft);}
+  .level-warn{color:#fb923c;border-color:#fb923c;background:rgba(251,146,60,.1);}
+  .level-bad{color:#f87171;border-color:#f87171;background:rgba(248,113,113,.1);}
+  .level-text{font-size:.9rem;color:var(--text);}
+  .holiday-list{list-style:none;margin:0;padding:0;}
+  .holiday-list li{display:flex;gap:12px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--panel-edge);font-size:.85rem;flex-wrap:wrap;}
+  .holiday-list li:last-child{border-bottom:none;}
+  .holiday-date{font-family:var(--mono);color:var(--amber);min-width:92px;font-size:.8rem;}
+  .holiday-name{flex:1;min-width:140px;color:var(--text);}
+  .holiday-local{color:var(--muted);font-size:.78rem;}
+  .holiday-when{font-size:.72rem;color:var(--muted);}
+  @media (max-width:560px){ .wiki-summary{flex-direction:column;} .wiki-thumb{width:100%;height:160px;} }
 
   .deeplink-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
   .flight-tracker-row{display:flex;gap:10px;}
@@ -535,6 +553,7 @@
     padding:13px 16px;font-size:.78rem;color:var(--muted);line-height:1.5;margin-top:8px;
   }
   .disclaimer-box b{color:var(--amber);}
+  .disclaimer-box a{color:var(--amber);}
 
   .file-origin-warning{
     border:1px solid rgba(245,166,35,.4);background:rgba(245,166,35,.08);border-radius:var(--radius);
@@ -1832,12 +1851,25 @@
 
     const summaryCard = document.createElement('div');
     summaryCard.className = 'travel-card';
-    summaryCard.innerHTML = `<h3>Overview</h3><p class="summary">${escapeHtml(data.summary)}</p>`;
+    const wiki = data.wiki && data.wiki.data;
+    const wikiUrl = wiki && sanitizeUrl(wiki.url);
+    const wikiThumb = wiki && sanitizeUrl(wiki.thumb);
+    summaryCard.innerHTML = wiki ? `
+      <h3>Overview</h3>
+      <div class="wiki-summary">
+        ${wikiThumb ? `<img class="wiki-thumb" src="${escapeHtml(wikiThumb)}" alt="${escapeHtml(wiki.title)}" loading="lazy">` : ''}
+        <div>
+          <p class="summary">${escapeHtml(wiki.extract)}</p>
+          ${wikiUrl ? `<a class="wiki-link" href="${escapeHtml(wikiUrl)}" target="_blank" rel="noopener">Read more on Wikipedia ↗</a>` : ''}
+        </div>
+      </div>
+      <p class="attr-desc" style="margin-top:12px;">${escapeHtml(data.summary)}</p>`
+      : `<h3>Overview</h3><p class="summary">${escapeHtml(data.summary)}</p>`;
     panels.overview.appendChild(summaryCard);
 
     if (data.goodToKnow){
       const gtk = data.goodToKnow;
-      const rows = [gtk.timeDiff, gtk.drivingNote, gtk.plugNote,
+      const rows = [gtk.visaNote, gtk.timeDiff, gtk.drivingNote, gtk.plugNote,
         gtk.familyCount > 0 ? `${gtk.familyCount} popular family spot${gtk.familyCount === 1 ? '' : 's'} found nearby — see the Attractions tab.` : null
       ].filter(Boolean);
       if (rows.length){
@@ -1859,11 +1891,51 @@
           <div class="forecast-icon">${escapeHtml(d.condition.split(' ')[0])}</div>
           <div class="forecast-temp">${d.tMax}° / ${d.tMin}°</div>
           ${d.precip > 0.5 ? `<div class="forecast-precip">${d.precip.toFixed(0)}mm</div>` : ''}
+          ${d.rainChance != null ? `<div class="forecast-precip">☔ ${Math.round(d.rainChance)}%</div>` : ''}
+          ${d.uvMax != null ? `<div class="forecast-precip">UV ${Math.round(d.uvMax)}</div>` : ''}
         </div>
       `).join('');
-      forecastCard.innerHTML = `<h3>7-day forecast</h3><div class="forecast-strip">${days}</div>`;
+      const today = data.forecast[0];
+      const uvText = today.uvMax != null ? ` · UV today ${Math.round(today.uvMax)} (${uvLabel(today.uvMax)})${today.uvMax >= 6 ? ' — sunscreen and a hat recommended' : ''}` : '';
+      const sunText = today.sunrise && today.sunset ? `🌅 Sunrise ${escapeHtml(today.sunrise)} · 🌇 Sunset ${escapeHtml(today.sunset)} (local time)` : '';
+      forecastCard.innerHTML = `<h3>7-day forecast</h3><div class="forecast-strip">${days}</div>
+        ${sunText || uvText ? `<p class="attr-desc" style="margin-top:12px;">${sunText}${escapeHtml(uvText)}</p>` : ''}`;
     }
     panels.overview.appendChild(forecastCard);
+
+    const airCard = document.createElement('div');
+    airCard.className = 'travel-card';
+    const air = data.air && data.air.data;
+    airCard.innerHTML = air ? `
+      <h3>Air quality now</h3>
+      <div class="level-row">
+        <span class="level-badge level-${air.level}">AQI ${air.aqi}</span>
+        <span class="level-text">${escapeHtml(air.label)}</span>
+      </div>
+      <p class="attr-desc" style="margin-top:8px;">${escapeHtml(air.advice)}${air.pm25 != null ? ` PM2.5: ${Math.round(air.pm25)} µg/m³.` : ''} (US AQI scale.)</p>`
+      : `<h3>Air quality now</h3><p class="attr-desc">Couldn't load air quality${data.air && data.air.error ? ' (' + escapeHtml(data.air.error) + ')' : ''}.</p>`;
+    panels.overview.appendChild(airCard);
+
+    const holCard = document.createElement('div');
+    holCard.className = 'travel-card';
+    const hol = data.holidays && data.holidays.data;
+    const fmtDate = iso => new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    const daysAway = iso => Math.round((new Date(iso + 'T12:00:00') - new Date()) / 86400000);
+    holCard.innerHTML = !hol
+      ? `<h3>Upcoming public holidays</h3><p class="attr-desc">Couldn't load holidays${data.holidays && data.holidays.error ? ' (' + escapeHtml(data.holidays.error) + ')' : ''}.</p>`
+      : hol.unsupported
+        ? `<h3>Upcoming public holidays</h3><p class="attr-desc">Holiday data isn't available for ${escapeHtml(countryObj.name)} from this source.</p>`
+        : !hol.list.length
+          ? `<h3>Upcoming public holidays</h3><p class="attr-desc">No nationwide public holidays in the next four months.</p>`
+          : `<h3>Upcoming public holidays</h3>
+             <ul class="holiday-list">${hol.list.map(h => {
+               const n = daysAway(h.date);
+               return `<li><span class="holiday-date">${escapeHtml(fmtDate(h.date))}</span>
+                 <span class="holiday-name">${escapeHtml(h.name)}${h.localName && h.localName !== h.name ? ` <span class="holiday-local">(${escapeHtml(h.localName)})</span>` : ''}</span>
+                 <span class="holiday-when">${n <= 0 ? 'today' : n === 1 ? 'tomorrow' : `in ${n} days`}</span></li>`;
+             }).join('')}</ul>
+             <p class="attr-desc" style="margin-top:10px;">Banks, offices and some shops and attractions may close or change hours; trains, flights and hotels are often busier and pricier around these dates.</p>`;
+    panels.overview.appendChild(holCard);
 
     const seasonCard = document.createElement('div');
     seasonCard.className = 'travel-card';
@@ -1923,6 +1995,18 @@
     transportCard.innerHTML = `<h3>Getting around</h3><div class="transport-list">${transportHtml}</div>`;
     panels.stay.appendChild(transportCard);
 
+    const visaCard = document.createElement('div');
+    visaCard.className = 'travel-card';
+    const visa = data.visa && data.visa.data;
+    visaCard.innerHTML = `
+      <h3>Entry requirements${data.passportName ? ` — ${escapeHtml(data.passportName)} passport` : ''}</h3>
+      ${visa ? `
+        <div class="level-row"><span class="level-badge level-${visa.level}">${escapeHtml(visa.headline)}</span></div>
+        ${visa.detail ? `<p class="attr-desc" style="margin-top:8px;">${escapeHtml(visa.detail)}</p>` : ''}`
+      : `<p class="attr-desc">Couldn't look up entry requirements${data.visa && data.visa.error ? ' (' + escapeHtml(data.visa.error) + ')' : ''}.</p>`}
+      <div class="disclaimer-box" style="margin-top:12px;"><b>Indicative only.</b> From the community-maintained Passport Index dataset, which can lag behind rule changes and doesn't cover purpose of trip, transit or passport-validity rules. Always confirm with the <a href="https://www.iatatravelcentre.com" target="_blank" rel="noopener">IATA Travel Centre</a> or the destination's embassy before booking.</div>`;
+    panels.practical.appendChild(visaCard);
+
     const packCard = document.createElement('div');
     packCard.className = 'travel-card';
     const chips = (data.packingEssentials || []).map(item => `<span class="chip">${escapeHtml(item)}</span>`).join('') ||
@@ -1953,7 +2037,6 @@
       <div class="convenience-grid">
         ${convFields.map(([label, val]) => `<div><div class="conv-label">${label}</div><div class="conv-value">${escapeHtml(val)}</div></div>`).join('')}
       </div>
-      <div class="disclaimer-box"><b>Visa rules aren't covered here.</b> There's no reliable free data source for passport-specific entry requirements — check the "Always-available resources" card above (IATA Travel Centre and your government's advisory) before booking.</div>
     `;
     panels.practical.appendChild(convCard);
 
@@ -1966,6 +2049,10 @@
         <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo — climate data (CC BY 4.0)</a>
         <a href="https://www.iso.org/iso-4217-currency-codes.html" target="_blank" rel="noopener">Currency, language &amp; driving-side facts — curated reference data (ISO standards), not a live lookup</a>
         <a href="https://frankfurter.dev/" target="_blank" rel="noopener">Exchange rates — Frankfurter (ECB) or ExchangeRate-API open access, whichever responds</a>
+        <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noopener">Open-Meteo Air Quality — current US AQI and particulates (CC BY 4.0)</a>
+        <a href="https://date.nager.at/" target="_blank" rel="noopener">Nager.Date — public holidays</a>
+        <a href="https://en.wikipedia.org/" target="_blank" rel="noopener">Wikipedia — destination summary and photo (CC BY-SA)</a>
+        <a href="https://github.com/ilyankou/passport-index-dataset" target="_blank" rel="noopener">Passport Index dataset — indicative visa requirements (community-maintained)</a>
       </div>
     `;
     root.appendChild(sourceFooter);
@@ -2079,20 +2166,138 @@
   };
 
   async function fetchForecast(lat, lon){
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&timezone=auto&forecast_days=7`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,precipitation_probability_max,uv_index_max,sunrise,sunset&timezone=auto&forecast_days=7`;
     const res = await fetchWithTimeout(url, {}, 10000);
     if (!res.ok) throw new Error('Forecast lookup failed (HTTP ' + res.status + ')');
     const data = await res.json();
     const daily = data.daily;
     if (!daily || !daily.time) throw new Error('No forecast data returned');
+    const at = (key, i) => (daily[key] ? daily[key][i] : null);
     return daily.time.map((dateStr, i) => ({
       date: dateStr,
       label: new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
       tMax: Math.round(daily.temperature_2m_max[i]),
       tMin: Math.round(daily.temperature_2m_min[i]),
       precip: daily.precipitation_sum[i],
+      rainChance: at('precipitation_probability_max', i),
+      uvMax: at('uv_index_max', i),
+      // Local times as returned with timezone=auto, e.g. "2026-09-25T05:41".
+      sunrise: (at('sunrise', i) || '').slice(11, 16),
+      sunset: (at('sunset', i) || '').slice(11, 16),
       condition: WMO_CODES[daily.weathercode[i]] || '—'
     }));
+  }
+
+  function uvLabel(uv){
+    if (uv == null) return null;
+    if (uv < 3) return 'low';
+    if (uv < 6) return 'moderate';
+    if (uv < 8) return 'high';
+    if (uv < 11) return 'very high';
+    return 'extreme';
+  }
+
+  // Current air quality — Open-Meteo Air Quality API (free, no key).
+  async function fetchAirQuality(lat, lon){
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi,pm2_5,pm10&timezone=auto`;
+    const res = await fetchWithTimeout(url, {}, 10000);
+    if (!res.ok) throw new Error('Air quality lookup failed (HTTP ' + res.status + ')');
+    const data = await res.json();
+    const cur = data.current;
+    if (!cur || cur.us_aqi == null) throw new Error('No air quality data for this location');
+    const aqi = Math.round(cur.us_aqi);
+    const bands = [
+      [50, 'Good', 'good', 'Air quality is fine for everyone.'],
+      [100, 'Moderate', 'ok', 'Acceptable; unusually sensitive people may want to limit long outdoor exertion.'],
+      [150, 'Unhealthy for sensitive groups', 'warn', 'Children, older adults and people with asthma should reduce long outdoor exertion.'],
+      [200, 'Unhealthy', 'bad', 'Everyone may feel effects — consider limiting time outdoors.'],
+      [300, 'Very unhealthy', 'bad', 'Avoid prolonged outdoor activity.'],
+      [Infinity, 'Hazardous', 'bad', 'Stay indoors where possible.']
+    ];
+    const [, label, level, advice] = bands.find(b => aqi <= b[0]);
+    return { aqi, label, level, advice, pm25: cur.pm2_5, pm10: cur.pm10, time: cur.time };
+  }
+
+  // Upcoming public holidays — Nager.Date (free, no key). Returns the next ones within ~4 months.
+  async function fetchHolidays(iso2){
+    const res = await fetchWithTimeout(`https://date.nager.at/api/v3/NextPublicHolidays/${encodeURIComponent(iso2)}`, {}, 10000);
+    if (res.status === 204 || res.status === 404) return { unsupported: true, list: [] };
+    if (!res.ok) throw new Error('Holiday lookup failed (HTTP ' + res.status + ')');
+    const all = await res.json();
+    const horizon = Date.now() + 120 * 86400000;
+    const seen = new Set();
+    const list = (Array.isArray(all) ? all : [])
+      .filter(h => h && h.date && new Date(h.date + 'T00:00:00').getTime() <= horizon)
+      // Only nationwide holidays, and one row per date.
+      .filter(h => h.global !== false && !seen.has(h.date) && seen.add(h.date))
+      .slice(0, 6)
+      .map(h => ({ date: h.date, name: h.name, localName: h.localName }));
+    return { unsupported: false, list };
+  }
+
+  // Short intro + photo for the destination — Wikipedia REST summary (free, no key, CC BY-SA).
+  async function fetchWikiSummary(name, region, country){
+    const titles = [name, region && `${name}, ${region}`, country && `${name}, ${country}`].filter(Boolean);
+    for (const title of titles){
+      try {
+        const res = await fetchWithTimeout(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, '_'))}`, {}, 8000);
+        if (!res.ok) continue;
+        const d = await res.json();
+        if (d.type !== 'standard' || !d.extract) continue; // skip disambiguation pages
+        return {
+          title: d.title,
+          extract: d.extract,
+          thumb: d.thumbnail && d.thumbnail.source,
+          url: d.content_urls && d.content_urls.desktop && d.content_urls.desktop.page
+        };
+      } catch (e){ /* try the next title */ }
+    }
+    throw new Error('No Wikipedia article found');
+  }
+
+  // Visa / entry requirement by passport — Passport Index open dataset (community-maintained, MIT).
+  // ~600 KB CSV of "Passport,Destination,Requirement" rows, cached in this browser for a week.
+  const VISA_CSV_URL = 'https://raw.githubusercontent.com/ilyankou/passport-index-dataset/master/passport-index-tidy-iso2.csv';
+  const VISA_CACHE_KEY = 'visaIndex.v1';
+  let visaCsvPromise = null;
+  function loadVisaCsv(){
+    if (visaCsvPromise) return visaCsvPromise;
+    visaCsvPromise = (async () => {
+      try {
+        const cached = JSON.parse(localStorage.getItem(VISA_CACHE_KEY) || 'null');
+        if (cached && Date.now() - cached.at < 7 * 86400000 && cached.csv) return cached.csv;
+      } catch (e){ /* storage unavailable */ }
+      const res = await fetchWithTimeout(VISA_CSV_URL, {}, 15000);
+      if (!res.ok) throw new Error('Visa dataset unavailable (HTTP ' + res.status + ')');
+      const csv = await res.text();
+      if (!csv.startsWith('Passport,Destination,Requirement')) throw new Error('Visa dataset format changed');
+      try { localStorage.setItem(VISA_CACHE_KEY, JSON.stringify({ at: Date.now(), csv })); } catch (e){ /* too big or blocked — fine */ }
+      return csv;
+    })();
+    visaCsvPromise.catch(() => { visaCsvPromise = null; });
+    return visaCsvPromise;
+  }
+
+  async function fetchVisaRequirement(passportIso2, destIso2){
+    if (!passportIso2 || !destIso2) throw new Error('Pick your passport to see entry requirements');
+    const csv = await loadVisaCsv();
+    const m = csv.match(new RegExp(`^${passportIso2.toUpperCase()},${destIso2.toUpperCase()},([^\r\n]+)`, 'm'));
+    if (!m) throw new Error('No entry for this passport and destination');
+    const raw = m[1].trim().toLowerCase();
+    const days = /^\d+$/.test(raw) ? parseInt(raw, 10) : null;
+    if (raw === '-1') return { level: 'good', headline: 'Your own country', detail: 'No visa needed — you are a citizen.' };
+    if (days) return { level: 'good', headline: `Visa-free for up to ${days} days`, detail: 'No visa needed for short tourist stays. A valid passport (often 6+ months validity) and onward ticket may be checked.' };
+    const map = {
+      'visa free': ['good', 'Visa-free', 'No visa needed for short tourist stays.'],
+      'eta': ['ok', 'Electronic travel authorisation (ETA/ESTA) required', 'Apply online before you fly — usually quick, but do it well ahead of departure.'],
+      'e-visa': ['ok', 'e-Visa required', 'Apply online before travel; processing can take several days.'],
+      'visa on arrival': ['ok', 'Visa on arrival', 'Obtain it at the airport or border; bring cash in the local currency or USD and passport photos.'],
+      'visa required': ['bad', 'Visa required', 'Apply at an embassy or consulate before travel — allow several weeks.'],
+      'no admission': ['bad', 'Entry not permitted', 'Holders of this passport are currently not admitted.'],
+      'covid ban': ['bad', 'Entry restricted', 'Entry has been restricted for holders of this passport.']
+    };
+    const [level, headline, detail] = map[raw] || ['ok', raw.replace(/^./, c => c.toUpperCase()), ''];
+    return { level, headline, detail };
   }
 
   const ALL_CURRENCIES = (() => {
@@ -2341,6 +2546,13 @@
       catch (e){ geo = await geocodeLocation(queryCity); }
 
       setTravelStatus('loading', `Pulling climate, forecast &amp; nearby places for ${destLabel}…`);
+      const settle = p => p.then(data => ({ data, error: null })).catch(e => ({ data: null, error: e.message }));
+      const extrasPromise = Promise.all([
+        settle(fetchAirQuality(geo.latitude, geo.longitude)),
+        settle(fetchHolidays(selectedTravelCountry.iso2)),
+        settle(fetchWikiSummary(geo.name, geo.admin1, geo.country || selectedTravelCountry.name)),
+        settle(fetchVisaRequirement(selectedTravelPassport && selectedTravelPassport.iso2, selectedTravelCountry.iso2))
+      ]);
       const [climateResult, forecastResult, places] = await Promise.all([
         fetchClimateMonthly(geo.latitude, geo.longitude)
           .then(d => ({ data: d, error: null })).catch(e => ({ data: [], error: e.message })),
@@ -2349,6 +2561,7 @@
         fetchNearbyPlaces(geo.latitude, geo.longitude).catch(e => ({ touristAttractions: [], natureAttractions: [], familyAttractions: [], lodging: [], transitCount: 0, error: e.message }))
       ]);
 
+      const [airResult, holidayResult, wikiResult, visaResult] = await extrasPromise;
       const monthly = climateResult.data;
       const bestSeason = monthly.length
         ? computeBestSeason(monthly)
@@ -2400,6 +2613,7 @@
           })(),
           drivingNote: passportDrivingNote,
           plugNote,
+          visaNote: visaResult.data ? `Entry for ${selectedTravelPassport.name} passport holders: ${visaResult.data.headline} (indicative — see Practical info).` : null,
           familyCount: places.familyAttractions ? places.familyAttractions.length : 0
         };
       }
@@ -2432,6 +2646,11 @@
         destCurrencySymbol,
         homeCurrencyCodeDefault: homeCurrencyCode,
         goodToKnow,
+        air: airResult,
+        holidays: holidayResult,
+        wiki: wikiResult,
+        visa: visaResult,
+        passportName: selectedTravelPassport && selectedTravelPassport.name,
         conveniences: {
           currency: currencyStr,
           language: languageStr,
