@@ -1,0 +1,19 @@
+{
+  "name": "Global Time & Travel",
+  "short_name": "Time & Travel",
+  "description": "World clocks, travel planner and the family password vault.",
+  "start_url": "/#time",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#080c14",
+  "theme_color": "#080c14",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Travel planner", "url": "/#travel" },
+    { "name": "Password vault", "url": "/#vault" }
+  ]
+}
