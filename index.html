@@ -631,6 +631,38 @@
   .back-to-top:focus-visible{outline:2px solid var(--text);outline-offset:3px;}
   @media (prefers-reduced-motion: reduce){.back-to-top{transition:opacity .01s;}}
 
+  /* ---------- UAE camping card ---------- */
+  .camp-card > summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;}
+  .camp-card > summary::-webkit-details-marker{display:none;}
+  .camp-card > summary h3{margin:0;}
+  .camp-toggle-hint{font-family:var(--mono);font-size:.72rem;color:var(--muted);border:1px solid var(--panel-edge);border-radius:20px;padding:5px 12px;flex:none;}
+  .camp-card[open] .camp-toggle-hint{color:var(--amber);border-color:var(--amber);}
+  .camp-card > summary:focus-visible{outline:2px solid var(--amber);outline-offset:4px;border-radius:6px;}
+  .camp-season{margin:16px 0 12px;font-size:.82rem;line-height:1.5;}
+  .camp-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  .camp-filter{background:var(--panel-soft);border:1px solid var(--panel-edge-soft);color:var(--muted);font-family:var(--mono);font-weight:600;
+    font-size:.72rem;letter-spacing:.04em;padding:7px 14px;border-radius:20px;cursor:pointer;}
+  .camp-filter:hover:not(.active){color:var(--text);border-color:var(--panel-edge);}
+  .camp-filter.active{background:var(--amber-soft);border-color:var(--amber);color:var(--amber);}
+  .camp-filter:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+  .camp-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:6px;}
+  .camp-spot{background:var(--panel-soft);border:1px solid var(--panel-edge);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;}
+  .camp-spot-head{display:flex;justify-content:space-between;gap:8px;align-items:baseline;}
+  .camp-spot-name{font-weight:700;color:var(--text);font-size:.92rem;}
+  .camp-spot-emirate{font-family:var(--mono);font-size:.68rem;color:var(--muted);flex:none;}
+  .camp-tags{display:flex;gap:6px;flex-wrap:wrap;}
+  .camp-tag{font-family:var(--mono);font-size:.64rem;padding:3px 8px;border-radius:12px;border:1px solid var(--panel-edge);color:var(--muted);}
+  .camp-tag.public{color:var(--green);border-color:rgba(52,211,153,.5);}
+  .camp-tag.offgrid{color:var(--amber);border-color:rgba(245,166,35,.5);}
+  .camp-note{font-size:.8rem;color:var(--muted);line-height:1.5;margin:0;}
+  .camp-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+  .camp-actions .btn-ghost{margin-left:0;text-decoration:none;}
+  .camp-weather{font-size:.76rem;color:var(--text);line-height:1.5;}
+  .camp-weather .camp-day{display:inline-block;margin-right:10px;white-space:nowrap;}
+  .camp-warn{color:#fb923c;}
+  .camp-sources{margin-top:12px;}
+  .camp-sources a{font-size:.72rem;color:var(--muted);}
+  .camp-sources a:hover{color:var(--amber);}
   /* ---------- Password vault tab ---------- */
   .vault-hidden{display:none !important;}
   .vault-auth{max-width:460px;}
@@ -887,6 +919,35 @@
       </div>
       <p class="attr-desc" style="margin-top:10px;">Live gate numbers and landing status come from paid aviation data feeds, not anything free. Flightradar24 and FlightAware block their flight pages from being shown inside other sites, so "Track" opens the right page for that flight in a new tab instead.</p>
     </div>
+
+    <details class="travel-card camp-card" id="campCard">
+      <summary><h3>⛺ UAE camping spots — beach, mountain &amp; desert</h3><span class="camp-toggle-hint">Show</span></summary>
+      <div id="campSeason" class="camp-season"></div>
+      <div class="camp-filters" role="group" aria-label="Landscape">
+        <button class="camp-filter active" type="button" data-kind="all">All</button>
+        <button class="camp-filter" type="button" data-kind="beach">🏖️ Beach</button>
+        <button class="camp-filter" type="button" data-kind="mountain">⛰️ Mountain</button>
+        <button class="camp-filter" type="button" data-kind="desert">🏜️ Desert</button>
+      </div>
+      <div class="camp-filters" role="group" aria-label="Type">
+        <button class="camp-filter active" type="button" data-access="all">Any type</button>
+        <button class="camp-filter" type="button" data-access="public">Public / bookable</button>
+        <button class="camp-filter" type="button" data-access="offgrid">Off-grid / wild</button>
+      </div>
+      <div id="campList" class="camp-list"></div>
+      <div class="disclaimer-box" style="margin-top:16px;">
+        <b>Before you go.</b> Weekend camping generally needs no permit; seasonal camps (about 3+ months) do, via the emirate's municipality (Dubai: Dubai Now app).
+        Camping in <b>wadis and flood-prone areas is banned</b> — check <a href="https://www.ncm.gov.ae/" target="_blank" rel="noopener">NCM weather warnings</a>.
+        Ras Al Khaimah bans camping on open public beaches except designated ones. Fires only in raised or enclosed pits, take all rubbish home — fines run from AED 2,000 to AED 30,000.
+        Off-grid: 4x4, tyre deflator + compressor, recovery gear, ~5 L water per person per day, and ideally a second car. Rules change often — confirm locally.
+      </div>
+      <div class="source-list camp-sources">
+        <a href="https://www.timeoutdubai.com/attractions/uae-camping-rules" target="_blank" rel="noopener">Time Out Dubai — UAE camping rules</a>
+        <a href="https://www.khaleejtimes.com/uae/uae-camping-banned-on-public-beaches-in-ras-al-khaimah" target="_blank" rel="noopener">Khaleej Times — RAK public beach camping ban</a>
+        <a href="https://www.propertyfinder.ae/blog/camping-jebel-jais/" target="_blank" rel="noopener">Property Finder — Camping in Jebel Jais</a>
+        <a href="https://www.dubicars.com/news/new-camping-rules-best-spots-uae-2026-guide.html" target="_blank" rel="noopener">Dubicars — UAE camping rules &amp; spots 2026</a>
+      </div>
+    </details>
 
     <div id="travelStatus" class="travel-status"></div>
     <div id="travelResults"></div>
@@ -2850,6 +2911,147 @@
   render();
   setInterval(render, 1000);
 
+})();
+</script>
+
+<script>
+// ---------- UAE camping spots (Travel tab) ----------
+// Curated list; coordinates are approximate and only used for the weather lookup.
+// Map links search Google Maps by name so they land on the real listing.
+(() => {
+  'use strict';
+
+  const SPOTS = [
+    // Beach
+    { name: 'Longbeach Campground', emirate: 'Ras Al Khaimah', kind: 'beach', access: 'public', lat: 25.69, lon: 55.78,
+      note: 'Bookable tents and facilities right on the sand — easy with kids.' },
+    { name: 'Al Rams Beach', emirate: 'Ras Al Khaimah', kind: 'beach', access: 'public', lat: 25.88, lon: 56.02,
+      note: 'One of the designated RAK beaches where camping is allowed; quiet fishing-village feel.' },
+    { name: 'Al Jazeera Public Beach', emirate: 'Ras Al Khaimah', kind: 'beach', access: 'public', lat: 25.71, lon: 55.80,
+      note: 'Designated beach with facilities where camping is permitted.' },
+    { name: 'Banan Beach', emirate: 'Ras Al Khaimah', kind: 'beach', access: 'public', lat: 25.79, lon: 55.94,
+      note: 'Glamping — pre-set luxury tents, nothing to carry.' },
+    { name: 'Umm Al Quwain beach', emirate: 'Umm Al Quwain', kind: 'beach', access: 'offgrid', lat: 25.56, lon: 55.55,
+      query: 'Umm Al Quwain beach camping',
+      note: 'Quiet, uncrowded coast; UAQ issues winter camping permits for longer stays.' },
+    { name: 'Mirfa Beach', emirate: 'Abu Dhabi', kind: 'beach', access: 'offgrid', lat: 24.12, lon: 53.44,
+      note: 'Long, calm and empty coastline in Al Dhafra — bring everything.' },
+    // Mountain
+    { name: 'Jebel Jais', emirate: 'Ras Al Khaimah', kind: 'mountain', access: 'offgrid', lat: 25.95, lon: 56.13,
+      note: "UAE's highest peak, often ~10°C cooler than the coast; plateaus along the road are popular for wild camping." },
+    { name: 'Bear Grylls Explorers Camp', emirate: 'Ras Al Khaimah', kind: 'mountain', access: 'public', lat: 25.94, lon: 56.10,
+      query: 'Bear Grylls Explorers Camp Jebel Jais',
+      note: 'Organised cabins and tents on Jebel Jais.' },
+    { name: 'Hatta Wadi Hub', emirate: 'Dubai', kind: 'mountain', access: 'public', lat: 24.80, lon: 56.12,
+      note: 'Bookable campsites and lodges, kayaking at Hatta Dam, mountain-bike trails.' },
+    { name: 'Jebel Hafeet', emirate: 'Abu Dhabi (Al Ain)', kind: 'mountain', access: 'public', lat: 24.06, lon: 55.77,
+      query: 'Jebel Hafeet Desert Park Al Ain',
+      note: 'Desert park at the base; the drive up at sunset is a highlight.' },
+    { name: 'Wadi Shawka', emirate: 'Ras Al Khaimah', kind: 'mountain', access: 'offgrid', lat: 25.10, lon: 56.05,
+      note: 'Hiking trails and a dam. Camp on high ground only — never in the wadi bed.' },
+    // Desert
+    { name: 'Al Qudra Lakes', emirate: 'Dubai', kind: 'desert', access: 'public', lat: 24.83, lon: 55.37,
+      note: 'Lakes, birdlife and great stargazing; reachable by regular car; busy at weekends.' },
+    { name: 'Love Lake', emirate: 'Dubai', kind: 'desert', access: 'public', lat: 24.84, lon: 55.37,
+      query: 'Love Lake Al Qudra Dubai',
+      note: 'Next to Al Qudra; lovely for a sunrise picnic.' },
+    { name: 'Fossil Rock (Jebel Mleiha)', emirate: 'Sharjah', kind: 'desert', access: 'offgrid', lat: 25.12, lon: 55.86,
+      query: 'Fossil Rock Sharjah',
+      note: 'Rock formations with marine fossils, surrounded by dunes. 4x4 needed.' },
+    { name: 'Mleiha Archaeological Centre', emirate: 'Sharjah', kind: 'desert', access: 'public', lat: 25.13, lon: 55.88,
+      note: 'Organised desert camping, stargazing and guided fossil trips.' },
+    { name: 'Big Red (Al Badayer)', emirate: 'Sharjah', kind: 'desert', access: 'offgrid', lat: 25.04, lon: 55.79,
+      query: 'Big Red Dune Al Badayer Sharjah',
+      note: 'Huge red dunes popular for dune-bashing; camp well away from driving tracks.' },
+    { name: 'Liwa – Moreeb Dune', emirate: 'Abu Dhabi', kind: 'desert', access: 'offgrid', lat: 22.96, lon: 54.99,
+      query: 'Moreeb Dune Liwa',
+      note: 'Some of the tallest dunes in the region, at the edge of the Empty Quarter. Most remote, most spectacular.' },
+  ];
+  const KIND_ICON = { beach: '🏖️', mountain: '⛰️', desert: '🏜️' };
+  const filter = { kind: 'all', access: 'all' };
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const mapsUrl = s => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(s.query || `${s.name} ${s.emirate}`);
+
+  function renderSeason() {
+    const m = new Date().getMonth(); // 0 = Jan
+    const inSeason = m >= 9 || m <= 3; // Oct–Apr
+    $('campSeason').innerHTML = inSeason
+      ? '<span class="level-badge level-good">In season</span> <span class="attr-desc">October–April is camping season in the UAE — nights are cool and days pleasant.</span>'
+      : `<span class="level-badge level-bad">Off season</span> <span class="attr-desc">May–September is too hot for most camping (40°C+ days, warm humid nights). Mountain spots at night are the only realistic option.${m === 8 ? ' The season opens in October — a good time to plan.' : ''}</span>`;
+  }
+
+  function render() {
+    const list = SPOTS.filter(s => (filter.kind === 'all' || s.kind === filter.kind) && (filter.access === 'all' || s.access === filter.access));
+    $('campList').innerHTML = list.length ? list.map(s => {
+      const i = SPOTS.indexOf(s);
+      return `<div class="camp-spot">
+        <div class="camp-spot-head"><span class="camp-spot-name">${KIND_ICON[s.kind]} ${esc(s.name)}</span><span class="camp-spot-emirate">${esc(s.emirate)}</span></div>
+        <div class="camp-tags"><span class="camp-tag ${s.access}">${s.access === 'public' ? 'Public / bookable' : 'Off-grid / wild'}</span><span class="camp-tag">${s.kind}</span></div>
+        <p class="camp-note">${esc(s.note)}</p>
+        <div class="camp-weather" id="campWx${i}"></div>
+        <div class="camp-actions">
+          <a class="btn-ghost" href="${mapsUrl(s)}" target="_blank" rel="noopener">📍 Google Maps ↗</a>
+          <button class="btn-ghost" type="button" data-wx="${i}">🌤️ 3-day weather</button>
+        </div>
+      </div>`;
+    }).join('') : '<p class="attr-desc">No spots match these filters.</p>';
+  }
+
+  async function loadWeather(i, btn) {
+    const s = SPOTS[i];
+    const box = $('campWx' + i);
+    btn.disabled = true;
+    box.textContent = 'Loading forecast…';
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${s.lat}&longitude=${s.lon}` +
+      '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=Asia%2FDubai&forecast_days=3';
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 10000);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const d = (await res.json()).daily;
+      if (!d || !d.time) throw new Error('no data');
+      const warns = new Set();
+      const days = d.time.map((date, k) => {
+        const hi = Math.round(d.temperature_2m_max[k]), lo = Math.round(d.temperature_2m_min[k]);
+        const rain = d.precipitation_probability_max ? d.precipitation_probability_max[k] : null;
+        const wind = d.wind_speed_10m_max ? Math.round(d.wind_speed_10m_max[k]) : null;
+        if (hi >= 38) warns.add('very hot by day — shade and lots of water');
+        if (lo <= 8) warns.add('cold at night — bring warm layers');
+        if (wind != null && wind >= 35) warns.add('strong wind — secure tents, expect blowing sand');
+        if (rain != null && rain >= 40) warns.add(s.kind === 'mountain' ? 'rain likely — flash-flood risk, stay out of wadis' : 'rain likely');
+        const label = new Date(date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short' });
+        return `<span class="camp-day"><b>${label}</b> ${hi}°/${lo}°${rain != null ? ` ☔${rain}%` : ''}${wind != null ? ` 💨${wind} km/h` : ''}</span>`;
+      });
+      box.innerHTML = days.join('') + (warns.size
+        ? `<div class="camp-warn">⚠ ${[...warns].map(esc).join('; ')}.</div>`
+        : '<div style="color:var(--green)">✓ Looks good for camping.</div>');
+      btn.textContent = '↻ Refresh weather';
+    } catch (e) {
+      box.textContent = `Couldn't load the forecast (${e.name === 'AbortError' ? 'timed out' : e.message}).`;
+    } finally {
+      clearTimeout(t);
+      btn.disabled = false;
+    }
+  }
+
+  document.querySelectorAll('#campCard .camp-filter').forEach(b => b.addEventListener('click', () => {
+    const dim = b.dataset.kind ? 'kind' : 'access';
+    filter[dim] = b.dataset[dim];
+    b.parentElement.querySelectorAll('.camp-filter').forEach(x => x.classList.toggle('active', x === b));
+    render();
+  }));
+  $('campList').addEventListener('click', e => {
+    const b = e.target.closest('[data-wx]');
+    if (b) loadWeather(+b.dataset.wx, b);
+  });
+  $('campCard').addEventListener('toggle', e => {
+    e.currentTarget.querySelector('.camp-toggle-hint').textContent = e.currentTarget.open ? 'Hide' : 'Show';
+  });
+
+  renderSeason();
+  render();
 })();
 </script>
 
