@@ -623,8 +623,17 @@
   .vault-help .vault-sync{margin:0 8px 0 0;}
   .vault-sync.ok{color:var(--green);}
   .vault-sync.warn{color:var(--amber);}
-  .vault-entry{padding:18px 20px;margin-bottom:12px;}
-  .vault-entry-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;}
+  .vault-entry{padding:14px 18px;margin-bottom:10px;}
+  .vault-entry-head{display:flex;gap:12px;align-items:center;cursor:pointer;user-select:none;}
+  .vault-entry-head > div{flex:1;min-width:0;}
+  .vault-toggle{flex:none;width:30px;height:30px;border-radius:8px;border:1px solid var(--panel-edge);background:var(--panel-soft);
+    color:var(--amber);font-family:var(--mono);font-size:1.05rem;font-weight:700;line-height:1;cursor:pointer;padding:0;}
+  .vault-toggle:hover{border-color:var(--amber);}
+  .vault-toggle:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+  .vault-entry-body{margin-top:4px;}
+  .vault-entry-body .vault-btns{margin-top:14px;}
+  .vault-lockbtn{border-color:var(--amber) !important;color:var(--amber) !important;}
+  .vault-countdown{font-family:var(--mono);font-size:.72rem;color:var(--muted);}
   .vault-entry-title{font-family:var(--mono);font-weight:700;font-size:.95rem;color:var(--text);overflow-wrap:anywhere;}
   .vault-entry-url{font-size:.75rem;color:var(--muted);}
   .vault-entry-url:hover{color:var(--amber);}
@@ -910,9 +919,10 @@
         <button class="btn-primary" id="vaultAddBtn" type="button">+ Add</button>
         <button class="btn-ghost" id="vaultExportBtn" type="button">Export</button>
         <button class="btn-ghost" id="vaultImportBtn" type="button">Import</button>
-        <button class="btn-ghost" id="vaultLockBtn" type="button">🔒 Lock</button>
+        <button class="btn-ghost" id="vaultToggleAll" type="button">Expand all</button>
+        <button class="btn-ghost vault-lockbtn" id="vaultLockBtn" type="button" title="Hide the entries and go back to the master password screen">🔒 Lock now</button>
       </div>
-      <p class="vault-help"><span class="vault-sync" id="vaultSyncStatus"></span> Tip: you can also drag a username or password straight into a login field. The vault locks itself after 5 minutes of inactivity.</p>
+      <p class="vault-help"><span class="vault-sync" id="vaultSyncStatus"></span> <span class="vault-countdown" id="vaultCountdown"></span> Click <b>+</b> on an entry to show its details. The vault locks itself after 2 minutes of inactivity, or when you switch to another tab.</p>
       <div id="vaultList"></div>
     </div>
 
@@ -2677,7 +2687,7 @@
   const API = 'api/vault';
   const ITERATIONS = 600000;
   const CLIPBOARD_CLEAR_MS = 30000;
-  const AUTO_LOCK_MS = 5 * 60 * 1000;
+  const AUTO_LOCK_MS = 2 * 60 * 1000;
   const PULL_EVERY_MS = 60 * 1000;
 
   const $ = id => document.getElementById(id);
@@ -2689,6 +2699,8 @@
   let entries = [];     // decrypted entries while unlocked (deleted ones kept as tombstones)
   let editingId = null;
   let lockTimer = null;
+  let lockAt = 0;                // when the auto-lock fires
+  const expanded = new Set();    // ids of entries whose details are shown
   let clipTimer = null;
   let syncMode = 'unknown';   // 'online' | 'offline' (network error) | 'local' (no sync service)
   let pushing = null;
@@ -3007,6 +3019,7 @@
 
   function lock() {
     key = null; salt = null; entries = []; editingId = null;
+    expanded.clear();
     $('vaultList').replaceChildren();
     $('vaultSearch').value = '';
     if ($('vaultEditDlg').open) $('vaultEditDlg').close();
@@ -3018,9 +3031,23 @@
   function bumpLock() {
     if (!key) return;
     clearTimeout(lockTimer);
+    lockAt = Date.now() + AUTO_LOCK_MS;
     lockTimer = setTimeout(() => { lock(); toast('Vault locked after inactivity'); }, AUTO_LOCK_MS);
+    showCountdown();
   }
   ['pointerdown', 'keydown', 'scroll'].forEach(ev => document.addEventListener(ev, bumpLock, { passive: true }));
+
+  function showCountdown() {
+    if (!key) return;
+    const secs = Math.max(0, Math.ceil((lockAt - Date.now()) / 1000));
+    $('vaultCountdown').textContent = `🔒 locks in ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  }
+  setInterval(showCountdown, 1000);
+
+  // Leaving the vault for the TIME or TRAVEL tab locks it.
+  document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.tab !== 'vault' && key) lock();
+  }));
 
   function openVault() {
     $('vaultAuthView').classList.add('vault-hidden');
@@ -3113,21 +3140,36 @@
     }
     list.replaceChildren(...shown.map(x => {
       const url = safeUrl(x.url);
-      const head = el('div', { class: 'vault-entry-head' },
+      const open = expanded.has(x.id);
+      const toggle = () => { open ? expanded.delete(x.id) : expanded.add(x.id); render(); };
+      const head = el('div', { class: 'vault-entry-head', onclick: toggle },
+        el('button', {
+          class: 'vault-toggle', type: 'button', 'aria-expanded': String(open),
+          'aria-label': (open ? 'Hide details for ' : 'Show details for ') + x.name,
+          onclick: e => { e.stopPropagation(); toggle(); },
+        }, open ? '−' : '+'),
         el('div', {},
           el('div', { class: 'vault-entry-title' }, x.name),
-          url ? el('a', { href: url, target: '_blank', rel: 'noopener noreferrer', class: 'vault-entry-url' }, new URL(url).host) : null),
-        el('div', { class: 'vault-btns' },
-          el('button', { class: 'btn-ghost', type: 'button', onclick: () => openEditor(x.id) }, 'Edit'),
-          el('button', { class: 'btn-ghost vault-danger', type: 'button', onclick: () => remove(x.id) }, 'Delete')));
-      return el('div', { class: 'travel-card vault-entry' },
-        head,
+          url ? el('a', { href: url, target: '_blank', rel: 'noopener noreferrer', class: 'vault-entry-url',
+            onclick: e => e.stopPropagation() }, new URL(url).host) : null));
+      const body = open ? el('div', { class: 'vault-entry-body' },
         x.user ? fieldRow('Username', x.user, false) : null,
         x.pass ? fieldRow('Password', x.pass, true) : null,
-        x.notes ? el('div', { class: 'vault-notes' }, x.notes) : null);
+        x.notes ? el('div', { class: 'vault-notes' }, x.notes) : null,
+        el('div', { class: 'vault-btns' },
+          el('button', { class: 'btn-ghost', type: 'button', onclick: () => openEditor(x.id) }, 'Edit'),
+          el('button', { class: 'btn-ghost vault-danger', type: 'button', onclick: () => remove(x.id) }, 'Delete'))) : null;
+      return el('div', { class: 'travel-card vault-entry' }, head, body);
     }));
+    $('vaultToggleAll').textContent = shown.every(x => expanded.has(x.id)) ? 'Collapse all' : 'Expand all';
   }
   $('vaultSearch').addEventListener('input', render);
+  $('vaultToggleAll').addEventListener('click', () => {
+    const ids = live().map(x => x.id);
+    const allOpen = ids.length && ids.every(id => expanded.has(id));
+    ids.forEach(id => allOpen ? expanded.delete(id) : expanded.add(id));
+    render();
+  });
 
   // ---------- add / edit ----------
   function openEditor(id) {
@@ -3169,7 +3211,9 @@
     if (existing) {
       Object.assign(existing, data);
     } else {
-      entries.push({ id: crypto.randomUUID ? crypto.randomUUID() : b64(crypto.getRandomValues(new Uint8Array(12))), ...data });
+      const id = crypto.randomUUID ? crypto.randomUUID() : b64(crypto.getRandomValues(new Uint8Array(12)));
+      entries.push({ id, ...data });
+      expanded.add(id);
     }
     if (await persist()) toast('Saved');
     $('vaultEditDlg').close();
