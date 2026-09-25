@@ -43,6 +43,14 @@
   h1 span{color:var(--amber);}
   a{color:var(--amber-bright);}
   .muted{color:var(--muted);font-size:13px;}
+  .back-link{
+    display:inline-flex;align-items:center;gap:6px;text-decoration:none;
+    font-family:var(--mono);font-weight:600;font-size:12px;letter-spacing:.05em;
+    color:var(--muted);background:var(--panel-soft);border:1px solid var(--panel-edge);
+    border-radius:var(--radius-sm);padding:8px 14px;
+  }
+  .back-link:hover{color:var(--amber);border-color:var(--amber);}
+  .back-link:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
   .panel{background:var(--panel);border:1px solid var(--panel-edge);border-radius:var(--radius);padding:20px;}
   .stack>*+*{margin-top:12px;}
   label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;}
@@ -104,7 +112,7 @@
   <header>
     <h1>&#128272; Password <span>Vault</span></h1>
     <div class="row">
-      <a href="index.html" class="muted">&larr; Time &amp; Travel</a>
+      <a href="index.html" class="back-link">&larr; &#128336; TIME &amp; TRAVEL</a>
       <button id="lockBtn" class="sm hidden">Lock</button>
     </div>
   </header>
