@@ -432,6 +432,16 @@
   .tab-btn:hover:not(.active){color:var(--text);border-color:var(--panel-edge);}
   .tab-btn.active{color:var(--amber);border-color:var(--amber);background:var(--bg);box-shadow:inset 0 -2px 0 var(--amber);}
   .tab-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+  .tab-logout{
+    margin-left:auto;display:inline-flex;align-items:center;text-decoration:none;
+    background:var(--panel-soft);border:1px solid var(--panel-edge-soft);color:var(--muted);
+    font-family:var(--mono);font-weight:600;letter-spacing:.05em;font-size:.75rem;
+    padding:9px 18px;border-radius:8px 8px 0 0;
+    transition:color .18s var(--ease), border-color .18s var(--ease);
+  }
+  .tab-logout .tab-icon{margin-right:6px;}
+  .tab-logout:hover{color:#f87171;border-color:#f87171;}
+  .tab-logout:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
 
   .page{display:none;}
   .page.active{display:block;animation:pageIn .32s var(--ease);}
@@ -680,6 +690,7 @@
     <button class="tab-btn active" data-tab="time" type="button"><span class="tab-icon">🕐</span>TIME</button>
     <button class="tab-btn" data-tab="travel" type="button"><span class="tab-icon">✈️</span>TRAVEL</button>
     <button class="tab-btn" data-tab="vault" type="button"><span class="tab-icon">🔐</span>VAULT</button>
+    <a class="tab-logout" href="logout" title="Sign out of the site — you will need a new email code to get back in"><span class="tab-icon">⏏</span>LOG OUT</a>
   </div>
 
   <div id="page-time" class="page active">
