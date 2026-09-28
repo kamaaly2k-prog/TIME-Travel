@@ -863,6 +863,17 @@
   .vault-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
   .vault-dialog .btn-primary{padding:9px 20px;}
   .vault-mono{font-family:var(--mono) !important;}
+  .vault-folders{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap;}
+  .vault-folder{background:var(--panel-soft);border:1px solid var(--panel-edge-soft);color:var(--muted);font-family:var(--mono);font-weight:600;
+    font-size:.78rem;letter-spacing:.04em;padding:9px 16px;border-radius:20px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;}
+  .vault-folder:hover:not(.active){color:var(--text);border-color:var(--panel-edge);}
+  .vault-folder.active{background:var(--amber-soft);border-color:var(--amber);color:var(--amber);}
+  .vault-folder:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+  .vault-folder-count{font-size:.7rem;}
+  .vault-office-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);
+    background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.35);border-radius:12px;padding:10px 14px;margin-bottom:14px;}
+  #vaultOfficeGate, #vaultOfficeChange{margin-bottom:14px;}
+  #vaultOfficeGate h3, #vaultOfficeChange h3{font-family:var(--mono);color:var(--amber);font-size:.83rem;letter-spacing:.07em;margin:0 0 12px;text-transform:uppercase;}
   .vault-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--amber);color:#1a1100;
     padding:10px 16px;border-radius:10px;font-weight:600;font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .2s;
     max-width:calc(100vw - 32px);text-align:center;z-index:60;font-family:var(--sans);}
@@ -1209,6 +1220,33 @@
         <button class="btn-ghost vault-lockbtn" id="vaultLockBtn" type="button" title="Hide the entries and go back to the master password screen">🔒 Lock now</button>
       </div>
       <p class="vault-help"><span class="vault-sync" id="vaultSyncStatus"></span> <span class="vault-countdown" id="vaultCountdown"></span> Click <b>+</b> on an entry to show its details. The vault locks itself after 2 minutes of inactivity, or when you switch to another tab.</p>
+      <div class="vault-folders" role="tablist" aria-label="Folders">
+        <button class="vault-folder active" type="button" role="tab" id="vaultFolderPersonal" data-folder="personal" aria-selected="true">👤 Personal <span class="vault-folder-count" id="vaultCountPersonal"></span></button>
+        <button class="vault-folder" type="button" role="tab" id="vaultFolderOffice" data-folder="office" aria-selected="false" tabindex="-1">💼 Office <span class="vault-folder-count" id="vaultCountOffice">🔒</span></button>
+      </div>
+      <div id="vaultOfficeBar" class="vault-office-bar vault-hidden">
+        <span>🔓 Office folder unlocked — entries here are encrypted a second time with the office password.</span>
+        <span class="vault-btns">
+          <button class="btn-ghost" id="vaultOfficeChangeBtn" type="button">🔑 Change office password</button>
+          <button class="btn-ghost vault-lockbtn" id="vaultOfficeLockBtn" type="button">🔒 Lock office</button>
+        </span>
+      </div>
+      <form id="vaultOfficeChange" class="travel-card vault-auth vault-hidden" autocomplete="off">
+        <h3>Change office password</h3>
+        <div class="control"><label for="vaultOfficeNew">New office password (10+ characters)</label><input id="vaultOfficeNew" type="password" class="search-input vault-mono" autocomplete="new-password" required></div>
+        <div class="control"><label for="vaultOfficeNew2">Confirm new office password</label><input id="vaultOfficeNew2" type="password" class="search-input vault-mono" autocomplete="new-password" required></div>
+        <div class="vault-err" id="vaultOfficeChangeErr"></div>
+        <div class="vault-actions"><button type="button" class="btn-ghost" id="vaultOfficeChangeCancel">Cancel</button><button type="submit" class="btn-primary">Change office password</button></div>
+      </form>
+      <form id="vaultOfficeGate" class="travel-card vault-auth vault-hidden" autocomplete="off">
+        <h3 id="vaultOfficeTitle">Unlock Office folder</h3>
+        <p class="vault-hint" id="vaultOfficeHint"></p>
+        <div class="control"><label for="vaultOfficePw">Office password</label><input id="vaultOfficePw" type="password" class="search-input vault-mono" autocomplete="current-password" required></div>
+        <div class="control vault-hidden" id="vaultOfficePw2Wrap"><label for="vaultOfficePw2">Confirm office password</label><input id="vaultOfficePw2" type="password" class="search-input vault-mono" autocomplete="new-password"></div>
+        <div class="vault-err" id="vaultOfficeErr"></div>
+        <button class="btn-primary" type="submit" id="vaultOfficeSubmit">Unlock Office</button>
+        <div class="vault-actions"><button class="btn-ghost vault-danger vault-hidden" id="vaultOfficeReset" type="button">Forgot office password…</button></div>
+      </form>
       <div id="vaultList"></div>
     </div>
 
@@ -3647,6 +3685,13 @@
   <form id="vaultEditForm" method="dialog" autocomplete="off">
     <h3 id="vaultEditTitle">Add entry</h3>
     <div class="control">
+      <label for="vaultFFolder">Folder</label>
+      <select id="vaultFFolder" class="search-input">
+        <option value="personal">👤 Personal</option>
+        <option value="office">💼 Office</option>
+      </select>
+    </div>
+    <div class="control">
       <label for="vaultFName">Name / site</label>
       <input id="vaultFName" class="search-input" required maxlength="200">
     </div>
@@ -3727,7 +3772,32 @@
   // ---------- helpers ----------
   const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
   const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
-  const live = () => entries.filter(x => !x.deleted);
+  // Folders: entries without a folder are Personal. Office entries are stored as
+  // { id, folder:'office', sealed:{iv,ct}, updated } — sealed with a second key derived from
+  // the office password, whose salt + a check value live in the hidden "__folders" record.
+  const isMeta = x => typeof x.id === 'string' && x.id.startsWith('__');
+  const live = () => entries.filter(x => !x.deleted && !isMeta(x));
+  const OFFICE_CHECK = 'office-folder-ok';
+  let folder = 'personal';          // folder being viewed
+  let officeKey = null;             // CryptoKey while the Office folder is unlocked
+  const officePlain = new Map();    // id -> decrypted office entry (only while unlocked)
+  let officeUnreadable = 0;         // office entries the current key can't open
+  const foldersMeta = () => entries.find(x => x.id === '__folders' && !x.deleted);
+  const personalEntries = () => live().filter(x => x.folder !== 'office');
+  const officeRecords = () => live().filter(x => x.folder === 'office');
+  const shownEntries = () => folder === 'office'
+    ? officeRecords().map(r => officePlain.get(r.id)).filter(Boolean)
+    : personalEntries();
+
+  async function refreshOffice() {
+    officePlain.clear();
+    officeUnreadable = 0;
+    if (!officeKey) return;
+    for (const r of officeRecords()) {
+      try { officePlain.set(r.id, { ...(await decryptJSON(officeKey, r.sealed)), id: r.id, folder: 'office', updated: r.updated }); }
+      catch { officeUnreadable++; }
+    }
+  }
 
   function toast(msg) {
     const t = $('vaultToast');
@@ -3901,6 +3971,7 @@
     entries = mergeEntries(entries, remote);
     writeStore(await encryptVault());
     lsSet(REV_KEY, String(srv.rev));
+    await refreshOffice();
     render();
     return true;
   }
@@ -4069,6 +4140,8 @@
   function lock() {
     key = null; salt = null; entries = []; editingId = null;
     expanded.clear();
+    officeKey = null; officePlain.clear(); folder = 'personal';
+    $('vaultOfficeChange').classList.add('vault-hidden');
     $('vaultList').replaceChildren();
     $('vaultSearch').value = '';
     if ($('vaultEditDlg').open) $('vaultEditDlg').close();
@@ -4102,6 +4175,7 @@
   function openVault() {
     $('vaultAuthView').classList.add('vault-hidden');
     $('vaultMainView').classList.remove('vault-hidden');
+    folder = 'personal';
     render();
     bumpLock();
   }
@@ -4175,17 +4249,55 @@
     return el('div', { class: 'vault-field' }, ...kids);
   }
 
+  function renderFolders() {
+    const officeOpen = !!officeKey;
+    for (const b of document.querySelectorAll('.vault-folder')) {
+      const on = b.dataset.folder === folder;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+    }
+    $('vaultCountPersonal').textContent = `(${personalEntries().length})`;
+    $('vaultCountOffice').textContent = officeOpen ? `🔓 (${officePlain.size})` : '🔒';
+    const inOffice = folder === 'office';
+    $('vaultOfficeBar').classList.toggle('vault-hidden', !(inOffice && officeOpen));
+    $('vaultOfficeGate').classList.toggle('vault-hidden', !(inOffice && !officeOpen));
+    if (!inOffice) $('vaultOfficeChange').classList.add('vault-hidden');
+    if (inOffice && !officeOpen) {
+      const setup = !foldersMeta();
+      $('vaultOfficeTitle').textContent = setup ? 'Set up the Office folder' : 'Unlock Office folder';
+      $('vaultOfficeHint').textContent = setup
+        ? 'Choose an office password (10+ characters). Office entries are encrypted a second time with it, so the master password alone can’t open them. Share it only with whoever should see office passwords.'
+        : 'Enter the office password to see office entries.';
+      $('vaultOfficeSubmit').textContent = setup ? 'Create Office folder' : 'Unlock Office';
+      $('vaultOfficePw2Wrap').classList.toggle('vault-hidden', !setup);
+      $('vaultOfficePw2').required = setup;
+      $('vaultOfficePw').autocomplete = setup ? 'new-password' : 'current-password';
+      $('vaultOfficeReset').classList.toggle('vault-hidden', setup);
+    }
+    // The editor can only file into Office while it is unlocked.
+    $('vaultFFolder').querySelector('option[value=office]').disabled = !officeOpen;
+    $('vaultFFolder').querySelector('option[value=office]').textContent = officeOpen ? '💼 Office' : '💼 Office (unlock it first)';
+  }
+
   function render() {
     if (!key) return;
+    renderFolders();
     const q = $('vaultSearch').value.trim().toLowerCase();
     const list = $('vaultList');
-    const all = live();
+    if (folder === 'office' && !officeKey) { list.replaceChildren(); return; }
+    const all = shownEntries();
     const shown = all
       .filter(x => !q || [x.name, x.user, x.url, x.notes].some(f => (f || '').toLowerCase().includes(q)))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const warn = folder === 'office' && officeUnreadable
+      ? el('p', { class: 'attr-desc' }, `🔒 ${officeUnreadable} office entr${officeUnreadable === 1 ? 'y' : 'ies'} can't be opened with this office password (probably from a restored backup with a different office password).`)
+      : null;
     if (!shown.length) {
-      list.replaceChildren(el('div', { class: 'travel-card vault-empty' },
-        all.length ? 'No matches.' : 'The family vault is empty. Click “+ Add” to store the first password.'));
+      list.replaceChildren(...[warn, el('div', { class: 'travel-card vault-empty' },
+        all.length ? 'No matches.' : folder === 'office'
+          ? 'The Office folder is empty. Click “+ Add” to store the first office password.'
+          : 'The family vault is empty. Click “+ Add” to store the first password.')].filter(Boolean));
       return;
     }
     list.replaceChildren(...shown.map(x => {
@@ -4211,11 +4323,12 @@
           el('button', { class: 'btn-ghost vault-danger', type: 'button', onclick: () => remove(x.id) }, 'Delete'))) : null;
       return el('div', { class: 'travel-card vault-entry' }, head, body);
     }));
+    if (warn) list.prepend(warn);
     $('vaultToggleAll').textContent = shown.every(x => expanded.has(x.id)) ? 'Collapse all' : 'Expand all';
   }
   $('vaultSearch').addEventListener('input', render);
   $('vaultToggleAll').addEventListener('click', () => {
-    const ids = live().map(x => x.id);
+    const ids = shownEntries().map(x => x.id);
     const allOpen = ids.length && ids.every(id => expanded.has(id));
     ids.forEach(id => allOpen ? expanded.delete(id) : expanded.add(id));
     render();
@@ -4224,7 +4337,9 @@
   // ---------- add / edit ----------
   function openEditor(id) {
     editingId = id || null;
-    const x = entries.find(e => e.id === id) || {};
+    const x = (id && (officePlain.get(id) || entries.find(e => e.id === id && e.folder !== 'office'))) || {};
+    renderFolders();
+    $('vaultFFolder').value = id ? (x.folder === 'office' ? 'office' : 'personal') : (folder === 'office' && officeKey ? 'office' : 'personal');
     $('vaultEditTitle').textContent = id ? 'Edit entry' : 'Add entry';
     $('vaultFName').value = x.name || '';
     $('vaultFUrl').value = x.url || '';
@@ -4257,14 +4372,19 @@
       updated: Date.now(),
     };
     if (!data.name) return;
-    const existing = editingId && entries.find(x => x.id === editingId);
-    if (existing) {
-      Object.assign(existing, data);
-    } else {
-      const id = crypto.randomUUID ? crypto.randomUUID() : b64(crypto.getRandomValues(new Uint8Array(12)));
-      entries.push({ id, ...data });
-      expanded.add(id);
-    }
+    const target = $('vaultFFolder').value === 'office' ? 'office' : 'personal';
+    if (target === 'office' && !officeKey) { toast('Unlock the Office folder first'); return; }
+    const id = editingId || (crypto.randomUUID ? crypto.randomUUID() : b64(crypto.getRandomValues(new Uint8Array(12))));
+    const { updated, ...fields } = data;
+    const record = target === 'office'
+      ? { id, folder: 'office', sealed: await encryptJSON(officeKey, fields), updated }
+      : { id, ...fields, updated };
+    const i = entries.findIndex(x => x.id === id);
+    if (i >= 0) entries[i] = record; else entries.push(record);
+    if (target === 'office') officePlain.set(id, { ...fields, id, folder: 'office', updated });
+    else officePlain.delete(id);
+    if (!editingId) expanded.add(id);
+    if (target !== folder) { folder = target; toast(`Saved in ${target === 'office' ? 'Office' : 'Personal'}`); }
     if (await persist()) toast('Saved');
     $('vaultEditDlg').close();
     render();
@@ -4272,12 +4392,121 @@
 
   async function remove(id) {
     const i = entries.findIndex(e => e.id === id);
-    if (i < 0 || !confirm(`Delete “${entries[i].name}”?`)) return;
+    const shownName = (officePlain.get(id) || entries[i] || {}).name || 'this entry';
+    if (i < 0 || !confirm(`Delete “${shownName}”?`)) return;
     entries[i] = { id, deleted: true, updated: Date.now() };
+    officePlain.delete(id);
     await persist();
     render();
     toast('Deleted');
   }
+
+  // ---------- Office folder ----------
+  document.querySelectorAll('.vault-folder').forEach((b, i, all) => {
+    b.addEventListener('click', () => {
+      folder = b.dataset.folder;
+      $('vaultSearch').value = '';
+      render();
+      if (folder === 'office' && !officeKey) setTimeout(() => $('vaultOfficePw').focus(), 0);
+    });
+    b.addEventListener('keydown', e => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const next = all[(i + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length];
+      next.focus(); next.click();
+    });
+  });
+
+  $('vaultOfficeGate').addEventListener('submit', async e => {
+    e.preventDefault();
+    const pw = $('vaultOfficePw').value;
+    const err = $('vaultOfficeErr');
+    const btn = $('vaultOfficeSubmit');
+    err.textContent = '';
+    btn.disabled = true;
+    try {
+      const meta = foldersMeta();
+      if (!meta) {
+        if (pw.length < 10) throw new Error('Use at least 10 characters.');
+        if (pw !== $('vaultOfficePw2').value) throw new Error('Passwords do not match.');
+        const oSalt = crypto.getRandomValues(new Uint8Array(16));
+        const k = await deriveKey(pw, oSalt);
+        const rec = { id: '__folders', updated: Date.now(), office: { salt: b64(oSalt), check: await encryptJSON(k, OFFICE_CHECK) } };
+        const mi = entries.findIndex(x => x.id === '__folders');
+        if (mi >= 0) entries[mi] = rec; else entries.push(rec);
+        officeKey = k;
+        await persist();
+        toast('Office folder created');
+      } else {
+        const k = await deriveKey(pw, unb64(meta.office.salt));
+        let ok = false;
+        try { ok = (await decryptJSON(k, meta.office.check)) === OFFICE_CHECK; } catch {}
+        if (!ok) throw new Error('Wrong office password.');
+        officeKey = k;
+      }
+      await refreshOffice();
+      render();
+    } catch (ex) {
+      err.textContent = ex.message;
+    } finally {
+      btn.disabled = false;
+      $('vaultOfficePw').value = ''; $('vaultOfficePw2').value = '';
+    }
+  });
+
+  $('vaultOfficeLockBtn').addEventListener('click', () => {
+    officeKey = null; officePlain.clear();
+    $('vaultOfficeChange').classList.add('vault-hidden');
+    render();
+    toast('Office folder locked');
+  });
+
+  $('vaultOfficeChangeBtn').addEventListener('click', () => {
+    $('vaultOfficeChange').classList.remove('vault-hidden');
+    $('vaultOfficeChangeErr').textContent = '';
+    $('vaultOfficeNew').focus();
+  });
+  $('vaultOfficeChangeCancel').addEventListener('click', () => $('vaultOfficeChange').classList.add('vault-hidden'));
+  $('vaultOfficeChange').addEventListener('submit', async e => {
+    e.preventDefault();
+    const pw = $('vaultOfficeNew').value, err = $('vaultOfficeChangeErr');
+    err.textContent = '';
+    if (pw.length < 10) { err.textContent = 'Use at least 10 characters.'; return; }
+    if (pw !== $('vaultOfficeNew2').value) { err.textContent = 'Passwords do not match.'; return; }
+    // Re-seal every readable office entry and the check value under a key from the new password.
+    const oSalt = crypto.getRandomValues(new Uint8Array(16));
+    const k = await deriveKey(pw, oSalt);
+    const now = Date.now();
+    for (const [id, plain] of officePlain) {
+      const { id: _i, folder: _f, updated: _u, ...fields } = plain;
+      const i = entries.findIndex(x => x.id === id);
+      if (i >= 0) entries[i] = { id, folder: 'office', sealed: await encryptJSON(k, fields), updated: now };
+    }
+    const mi = entries.findIndex(x => x.id === '__folders');
+    entries[mi] = { id: '__folders', updated: now, office: { salt: b64(oSalt), check: await encryptJSON(k, OFFICE_CHECK) } };
+    officeKey = k;
+    await persist();
+    await refreshOffice();
+    $('vaultOfficeNew').value = ''; $('vaultOfficeNew2').value = '';
+    $('vaultOfficeChange').classList.add('vault-hidden');
+    render();
+    toast('Office password changed — share the new one with whoever needs it');
+  });
+
+  // Escape hatch: the office password can't be recovered, so the only way back in is to
+  // remove the Office folder (its entries are unreadable without that password anyway).
+  $('vaultOfficeReset').addEventListener('click', async () => {
+    const n = officeRecords().length;
+    const typed = prompt(`Forgot the office password?\n\nOffice entries can't be decrypted without it. Resetting removes the Office folder and its ${n} entr${n === 1 ? 'y' : 'ies'} so you can set a new office password. Personal entries are not touched.\n\n(If the whole vault was erased by mistake, the 30-day undo still applies — but this reset is saved like any other edit.)\n\nType RESET OFFICE to confirm.`);
+    if (typed == null) return;
+    if (typed.trim() !== 'RESET OFFICE') { toast('Not reset — you need to type RESET OFFICE exactly'); return; }
+    const now = Date.now();
+    entries = entries.map(x => (x.folder === 'office' || x.id === '__folders') && !x.deleted ? { id: x.id, deleted: true, updated: now } : x);
+    officeKey = null; officePlain.clear();
+    await persist();
+    render();
+    toast('Office folder reset — set a new office password');
+  });
 
   // ---------- generator ----------
   function randomInt(max) {
@@ -4415,7 +4644,9 @@
     if (key) {
       // Merge into the open vault (re-encrypted with the family master password).
       const before = new Set(live().map(x => x.id));
+      if (foldersMeta()) imported = imported.filter(x => x.id !== '__folders');
       entries = mergeEntries(entries, imported);
+      await refreshOffice();
       const added = live().filter(x => !before.has(x.id)).length;
       await persist();
       render();
